@@ -127,6 +127,42 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 				departments.GET("/:id/permissions/inherited", middleware.RequirePermission("user.read"), deptHandler.GetInheritedPermissions)
 			}
 
+			// 角色权限管理
+			roleHandler := handler.NewRoleHandler()
+			roles := authorized.Group("/roles")
+			{
+				// 平台角色（仅平台管理员）
+				roles.POST("/platform", middleware.RequirePlatformAdmin(), roleHandler.CreatePlatformRole)
+
+				// 租户角色
+				roles.POST("", middleware.TenantMiddleware(), middleware.RequirePermission("role.create"), roleHandler.CreateTenantRole)
+				roles.GET("", middleware.RequirePermission("role.read"), roleHandler.GetList)
+				roles.GET("/:id", middleware.RequirePermission("role.read"), roleHandler.Get)
+				roles.PUT("/:id", middleware.RequirePermission("role.update"), roleHandler.Update)
+				roles.DELETE("/:id", middleware.RequirePermission("role.delete"), roleHandler.Delete)
+
+				// 角色权限管理
+				roles.PUT("/:id/permissions", middleware.RequirePermission("role.update"), roleHandler.SetPermissions)
+				roles.GET("/:id/permissions", middleware.RequirePermission("role.read"), roleHandler.GetPermissions)
+			}
+
+			// 权限列表（所有登录用户可查看）
+			permissions := authorized.Group("/permissions")
+			{
+				permissions.GET("", roleHandler.GetAllPermissions)
+				permissions.GET("/by-resource", roleHandler.GetPermissionsByResource)
+				permissions.GET("/grouped", roleHandler.GetGroupedPermissions)
+			}
+
+			// 用户角色管理
+			userRoles := authorized.Group("/users")
+			{
+				userRoles.POST("/:user_id/roles", middleware.RequirePermission("user.update"), roleHandler.AssignRoleToUser)
+				userRoles.DELETE("/:user_id/roles/:role_id", middleware.RequirePermission("user.update"), roleHandler.RemoveRoleFromUser)
+				userRoles.GET("/:user_id/roles", middleware.RequirePermission("user.read"), roleHandler.GetUserRoles)
+				userRoles.PUT("/:user_id/roles/batch", middleware.RequirePermission("user.update"), roleHandler.BatchAssignRoles)
+			}
+
 			// 客户管理
 			customerHandler := handler.NewCustomerHandler()
 			customers := authorized.Group("/customers")
