@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>表单管理 - CJAdmin</title>
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- 侧边栏 -->
+        <aside class="sidebar" id="sidebar">
+            <div class="logo">
+                <h2>CJAdmin</h2>
+            </div>
+            <nav class="nav-menu">
+                <a href="dashboard.html" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">仪表盘</span>
+                </a>
+                <a href="customers.html" class="nav-item">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">客户管理</span>
+                </a>
+                <a href="orders.html" class="nav-item">
+                    <span class="nav-icon">📦</span>
+                    <span class="nav-text">订单管理</span>
+                </a>
+                <a href="contracts.html" class="nav-item">
+                    <span class="nav-icon">📄</span>
+                    <span class="nav-text">合同管理</span>
+                </a>
+                <a href="finance.html" class="nav-item">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">财务管理</span>
+                </a>
+                <a href="forms.html" class="nav-item active">
+                    <span class="nav-icon">📝</span>
+                    <span class="nav-text">表单管理</span>
+                </a>
+                <a href="users.html" class="nav-item">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">用户管理</span>
+                </a>
+                <a href="departments.html" class="nav-item">
+                    <span class="nav-icon">🏢</span>
+                    <span class="nav-text">部门管理</span>
+                </a>
+                <a href="roles.html" class="nav-item">
+                    <span class="nav-icon">🔑</span>
+                    <span class="nav-text">角色权限</span>
+                </a>
+                <a href="logs.html" class="nav-item">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-text">操作日志</span>
+                </a>
+                <a href="settings.html" class="nav-item">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">系统设置</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 顶部栏 -->
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <button class="btn-icon" id="toggleSidebar">
+                        <span>☰</span>
+                    </button>
+                    <h1>表单管理</h1>
+                </div>
+                <div class="top-bar-right">
+                    <div class="user-info">
+                        <span id="currentUser">加载中...</span>
+                        <button class="btn-text" onclick="logout()">退出</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 内容区域 -->
+            <div class="content-area">
+                <!-- 操作栏 -->
+                <div class="toolbar">
+                    <div class="toolbar-left">
+                        <button class="btn btn-primary" onclick="openCreateModal()">
+                            <span>➕</span> 创建表单
+                        </button>
+                        <button class="btn btn-secondary" onclick="openCategoryModal()">
+                            <span>📁</span> 分类管理
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportForms()">
+                            <span>📤</span> 导出
+                        </button>
+                    </div>
+                    <div class="toolbar-right">
+                        <button class="btn btn-icon" onclick="loadForms(pagination.page, pagination.pageSize)" title="刷新">
+                            <span>🔄</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 筛选栏 -->
+                <div class="filter-bar">
+                    <form class="filter-form" onsubmit="handleFilter(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>表单名称</label>
+                                <input type="text" id="filterName" placeholder="输入表单名称">
+                            </div>
+                            <div class="form-group">
+                                <label>表单分类</label>
+                                <select id="filterCategory">
+                                    <option value="">全部分类</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>状态</label>
+                                <select id="filterStatus">
+                                    <option value="">全部状态</option>
+                                    <option value="active">启用</option>
+                                    <option value="inactive">禁用</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-primary">筛选</button>
+                                <button type="button" class="btn btn-secondary" onclick="resetFilter()">重置</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 表单列表 -->
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>表单名称</th>
+                                    <th>表单编码</th>
+                                    <th>分类</th>
+                                    <th>描述</th>
+                                    <th>状态</th>
+                                    <th>数据量</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="formsTableBody">
+                                <tr>
+                                    <td colspan="8" class="text-center">加载中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 分页 -->
+                    <div class="pagination" id="pagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑表单模态框 -->
+    <div class="modal" id="formModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="formModalTitle">创建表单</h3>
+                <button class="btn-close" onclick="closeFormModal()">&times;</button>
+            </div>
+            <form id="formForm" onsubmit="handleFormSubmit(event)">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="formName">表单名称 <span class="required">*</span></label>
+                            <input type="text" id="formName" required placeholder="输入表单名称">
+                        </div>
+                        <div class="form-group">
+                            <label for="formCode">表单编码 <span class="required">*</span></label>
+                            <input type="text" id="formCode" required placeholder="唯一编码，如：customer_info">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="categoryId">表单分类 <span class="required">*</span></label>
+                            <select id="categoryId" required>
+                                <option value="">请选择分类</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="formStatus">状态</label>
+                            <select id="formStatus">
+                                <option value="active">启用</option>
+                                <option value="inactive">禁用</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="formDescription">表单描述</label>
+                        <textarea id="formDescription" rows="2" placeholder="输入表单描述"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="formSchema">表单配置 (JSON Schema) <span class="required">*</span></label>
+                        <textarea id="formSchema" rows="12" required placeholder='输入JSON Schema配置，例如：
+{
+  "fields": [
+    {
+      "name": "customer_name",
+      "label": "客户名称",
+      "type": "text",
+      "required": true,
+      "placeholder": "请输入客户名称"
+    },
+    {
+      "name": "phone",
+      "label": "联系电话",
+      "type": "tel",
+      "required": true,
+      "validation": "^1[3-9]\\d{9}$"
+    }
+  ]
+}'></textarea>
+                        <small class="text-muted">
+                            支持的字段类型：text(文本)、number(数字)、email(邮箱)、tel(电话)、date(日期)、select(下拉选择)、radio(单选)、checkbox(多选)、textarea(多行文本)
+                        </small>
+                    </div>
+                    <div class="form-actions" style="margin-top: 15px;">
+                        <button type="button" class="btn btn-secondary" onclick="validateSchema()">验证配置</button>
+                        <button type="button" class="btn btn-secondary" onclick="previewForm()">预览表单</button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeFormModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 表单预览模态框 -->
+    <div class="modal" id="previewModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>表单预览</h3>
+                <button class="btn-close" onclick="closePreviewModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="formPreviewContainer" class="form-preview">
+                    <!-- 动态生成的表单预览 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closePreviewModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分类管理模态框 -->
+    <div class="modal" id="categoryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>分类管理</h3>
+                <button class="btn-close" onclick="closeCategoryModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 15px;">
+                    <button class="btn btn-primary btn-sm" onclick="openAddCategoryForm()">
+                        <span>➕</span> 添加分类
+                    </button>
+                </div>
+
+                <!-- 添加分类表单 -->
+                <form id="addCategoryForm" onsubmit="handleAddCategory(event)" style="display: none; margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 4px;">
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <input type="text" id="newCategoryName" required placeholder="分类名称">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <input type="text" id="newCategoryCode" required placeholder="分类编码">
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary btn-sm">保存</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="closeAddCategoryForm()">取消</button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- 分类列表 -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>分类名称</th>
+                                <th>分类编码</th>
+                                <th>表单数量</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="categoriesTableBody">
+                            <tr>
+                                <td colspan="4" class="text-center">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeCategoryModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 表单数据查看模态框 -->
+    <div class="modal" id="dataModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="dataModalTitle">表单数据</h3>
+                <button class="btn-close" onclick="closeDataModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 15px;">
+                    <button class="btn btn-primary btn-sm" onclick="exportFormData()">
+                        <span>📤</span> 导出数据
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table class="data-table" id="formDataTable">
+                        <thead id="formDataTableHead">
+                            <tr>
+                                <th>ID</th>
+                                <th>提交时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="formDataTableBody">
+                            <tr>
+                                <td colspan="2" class="text-center">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="dataPagination"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDataModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div id="toast" class="toast"></div>
+
+    <script src="../js/utils.js"></script>
+    <script>
+        // 全局变量
+        let currentFormId = null;
+        let currentViewFormId = null;
+        let allCategories = [];
+        let pagination = new Pagination('pagination', loadForms);
+        let dataPagination = new Pagination('dataPagination', loadFormData);
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            checkAuth();
+            loadCurrentUser();
+            setupSidebarToggle();
+            await loadCategories();
+            await loadForms(1, 10);
+        });
+
+        // 加载表单分类
+        async function loadCategories() {
+            try {
+                const response = await apiGet('/form-categories');
+                if (response.code === 200) {
+                    allCategories = response.data || [];
+                    updateCategorySelects();
+                }
+            } catch (error) {
+                console.error('加载分类失败:', error);
+            }
+        }
+
+        // 更新分类下拉框
+        function updateCategorySelects() {
+            // 更新筛选框
+            const filterSelect = document.getElementById('filterCategory');
+            filterSelect.innerHTML = '<option value="">全部分类</option>';
+            allCategories.forEach(cat => {
+                filterSelect.innerHTML += `<option value="${cat.id}">${cat.category_name}</option>`;
+            });
+
+            // 更新表单编辑框
+            const categorySelect = document.getElementById('categoryId');
+            categorySelect.innerHTML = '<option value="">请选择分类</option>';
+            allCategories.forEach(cat => {
+                categorySelect.innerHTML += `<option value="${cat.id}">${cat.category_name}</option>`;
+            });
+        }
+
+        // 加载表单列表
+        async function loadForms(page, pageSize) {
+            const name = document.getElementById('filterName')?.value || '';
+            const categoryId = document.getElementById('filterCategory')?.value || '';
+            const status = document.getElementById('filterStatus')?.value || '';
+
+            let url = `/forms?page=${page}&page_size=${pageSize}`;
+            if (name) url += `&name=${encodeURIComponent(name)}`;
+            if (categoryId) url += `&category_id=${categoryId}`;
+            if (status) url += `&status=${status}`;
+
+            try {
+                const response = await apiGet(url);
+                if (response.code === 200) {
+                    renderFormsTable(response.data.items || []);
+                    pagination.update(response.data.total || 0, page, pageSize);
+                } else {
+                    showToast('加载表单列表失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载表单列表失败:', error);
+                showToast('加载表单列表失败', 'error');
+                document.getElementById('formsTableBody').innerHTML =
+                    '<tr><td colspan="8" class="text-center">加载失败</td></tr>';
+            }
+        }
+
+        // 渲染表单列表
+        function renderFormsTable(forms) {
+            const tbody = document.getElementById('formsTableBody');
+
+            if (!forms || forms.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center">暂无数据</td></tr>';
+                return;
+            }
+
+            const statusMap = {
+                active: '<span class="badge badge-success">启用</span>',
+                inactive: '<span class="badge badge-secondary">禁用</span>'
+            };
+
+            tbody.innerHTML = forms.map(form => {
+                const category = allCategories.find(c => c.id === form.category_id);
+                const categoryName = category ? category.category_name : '未分类';
+
+                return `
+                    <tr>
+                        <td><strong>${form.form_name}</strong></td>
+                        <td><code>${form.form_code}</code></td>
+                        <td>${categoryName}</td>
+                        <td>${form.description || '-'}</td>
+                        <td>${statusMap[form.status] || form.status}</td>
+                        <td>${form.data_count || 0}</td>
+                        <td>${formatDateTime(form.created_at)}</td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn-action" onclick="viewFormData(${form.id}, '${form.form_name}')" title="查看数据">
+                                    📊
+                                </button>
+                                <button class="btn-action" onclick="previewFormById(${form.id})" title="预览">
+                                    👁️
+                                </button>
+                                <button class="btn-action" onclick="editForm(${form.id})" title="编辑">
+                                    ✏️
+                                </button>
+                                <button class="btn-action btn-danger" onclick="deleteForm(${form.id}, '${form.form_name}')" title="删除">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 打开创建表单模态框
+        function openCreateModal() {
+            currentFormId = null;
+            document.getElementById('formModalTitle').textContent = '创建表单';
+            document.getElementById('formForm').reset();
+            document.getElementById('formCode').disabled = false;
+            openModal('formModal');
+        }
+
+        // 编辑表单
+        async function editForm(id) {
+            try {
+                const response = await apiGet(`/forms/${id}`);
+                if (response.code === 200) {
+                    const form = response.data;
+                    currentFormId = id;
+
+                    document.getElementById('formModalTitle').textContent = '编辑表单';
+                    document.getElementById('formName').value = form.form_name;
+                    document.getElementById('formCode').value = form.form_code;
+                    document.getElementById('formCode').disabled = true; // 编辑时不允许修改编码
+                    document.getElementById('categoryId').value = form.category_id;
+                    document.getElementById('formStatus').value = form.status;
+                    document.getElementById('formDescription').value = form.description || '';
+                    document.getElementById('formSchema').value = JSON.stringify(form.schema, null, 2);
+
+                    openModal('formModal');
+                } else {
+                    showToast('加载表单信息失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载表单信息失败:', error);
+                showToast('加载表单信息失败', 'error');
+            }
+        }
+
+        // 删除表单
+        async function deleteForm(id, name) {
+            if (!confirm(`确定要删除表单"${name}"吗？此操作将同时删除所有表单数据，不可恢复！`)) {
+                return;
+            }
+
+            try {
+                const response = await apiDelete(`/forms/${id}`);
+                if (response.code === 200) {
+                    showToast('删除成功', 'success');
+                    loadForms(pagination.page, pagination.pageSize);
+                } else {
+                    showToast('删除失败', 'error');
+                }
+            } catch (error) {
+                console.error('删除表单失败:', error);
+                showToast('删除失败', 'error');
+            }
+        }
+
+        // 提交表单
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+
+            // 验证 JSON Schema
+            const schemaText = document.getElementById('formSchema').value.trim();
+            let schema;
+            try {
+                schema = JSON.parse(schemaText);
+            } catch (error) {
+                showToast('JSON Schema 格式错误: ' + error.message, 'error');
+                return;
+            }
+
+            const data = {
+                form_name: document.getElementById('formName').value,
+                form_code: document.getElementById('formCode').value,
+                category_id: parseInt(document.getElementById('categoryId').value),
+                status: document.getElementById('formStatus').value,
+                description: document.getElementById('formDescription').value,
+                schema: schema
+            };
+
+            try {
+                let response;
+                if (currentFormId) {
+                    response = await apiPut(`/forms/${currentFormId}`, data);
+                } else {
+                    response = await apiPost('/forms', data);
+                }
+
+                if (response.code === 200) {
+                    showToast(currentFormId ? '更新成功' : '创建成功', 'success');
+                    closeFormModal();
+                    loadForms(pagination.page, pagination.pageSize);
+                } else {
+                    showToast(response.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                console.error('提交表单失败:', error);
+                showToast('操作失败', 'error');
+            }
+        }
+
+        // 验证 Schema
+        function validateSchema() {
+            const schemaText = document.getElementById('formSchema').value.trim();
+
+            if (!schemaText) {
+                showToast('请输入 JSON Schema', 'warning');
+                return;
+            }
+
+            try {
+                const schema = JSON.parse(schemaText);
+
+                // 基本验证
+                if (!schema.fields || !Array.isArray(schema.fields)) {
+                    showToast('Schema 必须包含 fields 数组', 'error');
+                    return;
+                }
+
+                if (schema.fields.length === 0) {
+                    showToast('至少需要定义一个字段', 'warning');
+                    return;
+                }
+
+                // 验证字段
+                const validTypes = ['text', 'number', 'email', 'tel', 'date', 'select', 'radio', 'checkbox', 'textarea'];
+                for (let i = 0; i < schema.fields.length; i++) {
+                    const field = schema.fields[i];
+                    if (!field.name) {
+                        showToast(`字段 ${i + 1} 缺少 name 属性`, 'error');
+                        return;
+                    }
+                    if (!field.type) {
+                        showToast(`字段 ${field.name} 缺少 type 属性`, 'error');
+                        return;
+                    }
+                    if (!validTypes.includes(field.type)) {
+                        showToast(`字段 ${field.name} 的类型 ${field.type} 不支持`, 'error');
+                        return;
+                    }
+                }
+
+                showToast('Schema 验证通过！', 'success');
+            } catch (error) {
+                showToast('JSON 格式错误: ' + error.message, 'error');
+            }
+        }
+
+        // 预览表单
+        function previewForm() {
+            const schemaText = document.getElementById('formSchema').value.trim();
+
+            if (!schemaText) {
+                showToast('请输入 JSON Schema', 'warning');
+                return;
+            }
+
+            try {
+                const schema = JSON.parse(schemaText);
+                renderFormPreview(schema);
+                openModal('previewModal');
+            } catch (error) {
+                showToast('JSON 格式错误: ' + error.message, 'error');
+            }
+        }
+
+        // 根据ID预览表单
+        async function previewFormById(id) {
+            try {
+                const response = await apiGet(`/forms/${id}`);
+                if (response.code === 200) {
+                    renderFormPreview(response.data.schema);
+                    openModal('previewModal');
+                } else {
+                    showToast('加载表单失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载表单失败:', error);
+                showToast('加载表单失败', 'error');
+            }
+        }
+
+        // 渲染表单预览
+        function renderFormPreview(schema) {
+            const container = document.getElementById('formPreviewContainer');
+
+            if (!schema.fields || schema.fields.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted">暂无字段</p>';
+                return;
+            }
+
+            let html = '<form class="preview-form" onsubmit="return false;">';
+
+            schema.fields.forEach(field => {
+                html += '<div class="form-group">';
+                html += `<label>${field.label || field.name}`;
+                if (field.required) {
+                    html += ' <span class="required">*</span>';
+                }
+                html += '</label>';
+
+                switch (field.type) {
+                    case 'textarea':
+                        html += `<textarea placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''}></textarea>`;
+                        break;
+                    case 'select':
+                        html += `<select ${field.required ? 'required' : ''}>`;
+                        html += `<option value="">请选择</option>`;
+                        if (field.options) {
+                            field.options.forEach(opt => {
+                                html += `<option value="${opt.value}">${opt.label}</option>`;
+                            });
+                        }
+                        html += '</select>';
+                        break;
+                    case 'radio':
+                        if (field.options) {
+                            field.options.forEach(opt => {
+                                html += `
+                                    <label class="radio-item">
+                                        <input type="radio" name="${field.name}" value="${opt.value}" ${field.required ? 'required' : ''}>
+                                        ${opt.label}
+                                    </label>
+                                `;
+                            });
+                        }
+                        break;
+                    case 'checkbox':
+                        if (field.options) {
+                            field.options.forEach(opt => {
+                                html += `
+                                    <label class="checkbox-item">
+                                        <input type="checkbox" name="${field.name}" value="${opt.value}">
+                                        ${opt.label}
+                                    </label>
+                                `;
+                            });
+                        }
+                        break;
+                    default:
+                        html += `<input type="${field.type}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''}>`;
+                }
+
+                if (field.help) {
+                    html += `<small class="text-muted">${field.help}</small>`;
+                }
+
+                html += '</div>';
+            });
+
+            html += '<div class="form-actions"><button type="submit" class="btn btn-primary" disabled>提交（仅预览）</button></div>';
+            html += '</form>';
+
+            container.innerHTML = html;
+        }
+
+        // 查看表单数据
+        async function viewFormData(formId, formName) {
+            currentViewFormId = formId;
+            document.getElementById('dataModalTitle').textContent = `表单数据 - ${formName}`;
+
+            // 加载表单schema以确定列
+            try {
+                const formResponse = await apiGet(`/forms/${formId}`);
+                if (formResponse.code === 200) {
+                    const schema = formResponse.data.schema;
+                    await loadFormData(1, 10, schema);
+                    openModal('dataModal');
+                } else {
+                    showToast('加载表单配置失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载表单配置失败:', error);
+                showToast('加载表单配置失败', 'error');
+            }
+        }
+
+        // 加载表单数据
+        async function loadFormData(page, pageSize, schema = null) {
+            if (!currentViewFormId) return;
+
+            try {
+                const response = await apiGet(`/forms/${currentViewFormId}/data?page=${page}&page_size=${pageSize}`);
+                if (response.code === 200) {
+                    renderFormDataTable(response.data.items || [], schema);
+                    dataPagination.update(response.data.total || 0, page, pageSize);
+                } else {
+                    showToast('加载数据失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                showToast('加载数据失败', 'error');
+            }
+        }
+
+        // 渲染表单数据表格
+        function renderFormDataTable(dataItems, schema) {
+            const thead = document.getElementById('formDataTableHead');
+            const tbody = document.getElementById('formDataTableBody');
+
+            if (!dataItems || dataItems.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="100" class="text-center">暂无数据</td></tr>';
+                return;
+            }
+
+            // 构建表头
+            let headHtml = '<tr><th>ID</th>';
+            if (schema && schema.fields) {
+                schema.fields.forEach(field => {
+                    headHtml += `<th>${field.label || field.name}</th>`;
+                });
+            } else {
+                // 如果没有schema，从第一条数据推断字段
+                const firstData = dataItems[0]?.data || {};
+                Object.keys(firstData).forEach(key => {
+                    headHtml += `<th>${key}</th>`;
+                });
+            }
+            headHtml += '<th>提交时间</th></tr>';
+            thead.innerHTML = headHtml;
+
+            // 构建表体
+            let bodyHtml = '';
+            dataItems.forEach(item => {
+                bodyHtml += `<tr><td>${item.id}</td>`;
+
+                if (schema && schema.fields) {
+                    schema.fields.forEach(field => {
+                        const value = item.data?.[field.name] || '-';
+                        bodyHtml += `<td>${Array.isArray(value) ? value.join(', ') : value}</td>`;
+                    });
+                } else {
+                    const data = item.data || {};
+                    Object.keys(data).forEach(key => {
+                        const value = data[key];
+                        bodyHtml += `<td>${Array.isArray(value) ? value.join(', ') : value}</td>`;
+                    });
+                }
+
+                bodyHtml += `<td>${formatDateTime(item.created_at)}</td></tr>`;
+            });
+            tbody.innerHTML = bodyHtml;
+        }
+
+        // 导出表单数据
+        async function exportFormData() {
+            if (!currentViewFormId) return;
+
+            try {
+                showToast('正在导出...', 'info');
+                const response = await apiGet(`/forms/${currentViewFormId}/data/export`);
+
+                if (response.code === 200) {
+                    // 假设后端返回CSV内容或下载链接
+                    const csvContent = response.data.csv || response.data;
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `form_data_${currentViewFormId}_${Date.now()}.csv`;
+                    link.click();
+                    showToast('导出成功', 'success');
+                } else {
+                    showToast('导出失败', 'error');
+                }
+            } catch (error) {
+                console.error('导出失败:', error);
+                showToast('导出失败', 'error');
+            }
+        }
+
+        // 导出表单列表
+        async function exportForms() {
+            try {
+                showToast('正在导出...', 'info');
+                const response = await apiGet('/forms/export');
+
+                if (response.code === 200) {
+                    const csvContent = response.data.csv || response.data;
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `forms_${Date.now()}.csv`;
+                    link.click();
+                    showToast('导出成功', 'success');
+                } else {
+                    showToast('导出失败', 'error');
+                }
+            } catch (error) {
+                console.error('导出失败:', error);
+                showToast('导出失败', 'error');
+            }
+        }
+
+        // 分类管理
+        function openCategoryModal() {
+            loadCategoriesTable();
+            openModal('categoryModal');
+        }
+
+        // 加载分类表格
+        async function loadCategoriesTable() {
+            const tbody = document.getElementById('categoriesTableBody');
+
+            try {
+                const response = await apiGet('/form-categories');
+                if (response.code === 200) {
+                    const categories = response.data || [];
+
+                    if (categories.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center">暂无分类</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = categories.map(cat => `
+                        <tr>
+                            <td>${cat.category_name}</td>
+                            <td><code>${cat.category_code}</code></td>
+                            <td>${cat.form_count || 0}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn-action btn-danger" onclick="deleteCategory(${cat.id}, '${cat.category_name}')" title="删除">
+                                        🗑️
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    showToast('加载分类失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载分类失败:', error);
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">加载失败</td></tr>';
+            }
+        }
+
+        // 打开添加分类表单
+        function openAddCategoryForm() {
+            document.getElementById('addCategoryForm').style.display = 'block';
+            document.getElementById('newCategoryName').focus();
+        }
+
+        // 关闭添加分类表单
+        function closeAddCategoryForm() {
+            document.getElementById('addCategoryForm').style.display = 'none';
+            document.getElementById('addCategoryForm').reset();
+        }
+
+        // 添加分类
+        async function handleAddCategory(event) {
+            event.preventDefault();
+
+            const data = {
+                category_name: document.getElementById('newCategoryName').value,
+                category_code: document.getElementById('newCategoryCode').value
+            };
+
+            try {
+                const response = await apiPost('/form-categories', data);
+                if (response.code === 200) {
+                    showToast('添加成功', 'success');
+                    closeAddCategoryForm();
+                    await loadCategories();
+                    loadCategoriesTable();
+                } else {
+                    showToast(response.message || '添加失败', 'error');
+                }
+            } catch (error) {
+                console.error('添加分类失败:', error);
+                showToast('添加失败', 'error');
+            }
+        }
+
+        // 删除分类
+        async function deleteCategory(id, name) {
+            if (!confirm(`确定要删除分类"${name}"吗？`)) {
+                return;
+            }
+
+            try {
+                const response = await apiDelete(`/form-categories/${id}`);
+                if (response.code === 200) {
+                    showToast('删除成功', 'success');
+                    await loadCategories();
+                    loadCategoriesTable();
+                } else {
+                    showToast(response.message || '删除失败', 'error');
+                }
+            } catch (error) {
+                console.error('删除分类失败:', error);
+                showToast('删除失败', 'error');
+            }
+        }
+
+        // 筛选处理
+        function handleFilter(event) {
+            event.preventDefault();
+            loadForms(1, pagination.pageSize);
+        }
+
+        // 重置筛选
+        function resetFilter() {
+            document.getElementById('filterName').value = '';
+            document.getElementById('filterCategory').value = '';
+            document.getElementById('filterStatus').value = '';
+            loadForms(1, pagination.pageSize);
+        }
+
+        // 模态框操作
+        function closeFormModal() {
+            closeModal('formModal');
+            currentFormId = null;
+        }
+
+        function closePreviewModal() {
+            closeModal('previewModal');
+        }
+
+        function closeCategoryModal() {
+            closeModal('categoryModal');
+            closeAddCategoryForm();
+        }
+
+        function closeDataModal() {
+            closeModal('dataModal');
+            currentViewFormId = null;
+        }
+    </script>
+</body>
+</html>
