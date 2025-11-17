@@ -98,6 +98,35 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 			// 当前用户信息
 			authorized.GET("/user/current", authHandler.GetCurrentUser)
 
+			// 租户管理（仅平台管理员）
+			tenantHandler := handler.NewTenantHandler()
+			tenants := authorized.Group("/tenants")
+			tenants.Use(middleware.RequirePlatformAdmin())
+			{
+				tenants.POST("", tenantHandler.Create)
+				tenants.GET("", tenantHandler.List)
+				tenants.GET("/:id", tenantHandler.Get)
+				tenants.PUT("/:id", tenantHandler.Update)
+				tenants.DELETE("/:id", tenantHandler.Delete)
+				tenants.PUT("/:id/status", tenantHandler.UpdateStatus)
+				tenants.GET("/:id/statistics", tenantHandler.GetStatistics)
+			}
+
+			// 部门管理
+			deptHandler := handler.NewDepartmentHandler()
+			departments := authorized.Group("/departments")
+			departments.Use(middleware.TenantMiddleware())
+			{
+				departments.POST("", middleware.RequirePermission("user.create"), deptHandler.Create)
+				departments.GET("/tree", middleware.RequirePermission("user.read"), deptHandler.GetTree)
+				departments.GET("", middleware.RequirePermission("user.read"), deptHandler.GetList)
+				departments.PUT("/:id", middleware.RequirePermission("user.update"), deptHandler.Update)
+				departments.DELETE("/:id", middleware.RequirePermission("user.delete"), deptHandler.Delete)
+				departments.PUT("/:id/permissions", middleware.RequirePermission("user.update"), deptHandler.SetPermissions)
+				departments.GET("/:id/permissions", middleware.RequirePermission("user.read"), deptHandler.GetPermissions)
+				departments.GET("/:id/permissions/inherited", middleware.RequirePermission("user.read"), deptHandler.GetInheritedPermissions)
+			}
+
 			// 客户管理
 			customerHandler := handler.NewCustomerHandler()
 			customers := authorized.Group("/customers")
