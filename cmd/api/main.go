@@ -174,6 +174,11 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 				customers.PUT("/:id", middleware.RequirePermission("customer.update"), customerHandler.Update)
 				customers.DELETE("/:id", middleware.RequirePermission("customer.delete"), customerHandler.Delete)
 				customers.GET("/:id/accounts", middleware.RequirePermission("customer.read"), customerHandler.GetAccounts)
+
+				// Excel导入导出
+				customers.GET("/export", middleware.RequirePermission("customer.read"), customerHandler.ExportCustomers)
+				customers.GET("/template", middleware.RequirePermission("customer.read"), customerHandler.GetImportTemplate)
+				customers.POST("/import", middleware.RequirePermission("customer.create"), customerHandler.ImportCustomers)
 			}
 
 			// 订单管理
