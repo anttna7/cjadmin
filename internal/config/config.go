@@ -15,9 +15,10 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
-	Mode string `mapstructure:"mode"`
+	Host    string `mapstructure:"host"`
+	Port    int    `mapstructure:"port"`
+	Mode    string `mapstructure:"mode"`
+	BaseURL string `mapstructure:"base_url"`
 }
 
 type DatabaseConfig struct {
@@ -38,9 +39,9 @@ type JWTConfig struct {
 }
 
 type UploadConfig struct {
+	Path         string   `mapstructure:"path"`
 	MaxSize      int64    `mapstructure:"max_size"`
 	AllowedTypes []string `mapstructure:"allowed_types"`
-	UploadPath   string   `mapstructure:"upload_path"`
 }
 
 type SecurityConfig struct {
@@ -57,6 +58,9 @@ type LoggingConfig struct {
 	MaxAge     int    `mapstructure:"max_age"`
 }
 
+// AppConfig 全局配置对象
+var AppConfig *Config
+
 func Load(configPath string) (*Config, error) {
 	viper.SetConfigFile(configPath)
 	viper.SetConfigType("yaml")
@@ -70,6 +74,9 @@ func Load(configPath string) (*Config, error) {
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
+
+	// 设置全局配置
+	AppConfig = &config
 
 	return &config, nil
 }

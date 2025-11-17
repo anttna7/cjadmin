@@ -276,8 +276,22 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 				auditLogs.GET("/statistics", middleware.RequirePermission("system.read"), systemHandler.GetAuditStatistics)
 				auditLogs.POST("/clean", middleware.RequirePermission("system.delete"), systemHandler.CleanOldAuditLogs)
 			}
+
+			// 文件上传管理
+			uploadHandler := handler.NewUploadHandler()
+			files := authorized.Group("/files")
+			files.Use(middleware.TenantMiddleware())
+			{
+				files.POST("/upload", uploadHandler.UploadFile)
+				files.POST("/upload/image", uploadHandler.UploadImage)
+				files.POST("/upload/document", uploadHandler.UploadDocument)
+				files.GET("/statistics", middleware.RequirePermission("system.read"), uploadHandler.GetUploadStats)
+			}
 		}
 	}
+
+	// 文件下载（公开访问，通过URL路径验证权限）
+	router.GET("/api/files/:tenant_id/:resource_type/:filename", handler.NewUploadHandler().DownloadFile)
 
 	// 前端页面路由
 	router.GET("/", func(c *gin.Context) {
