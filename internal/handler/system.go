@@ -279,3 +279,104 @@ func (h *SystemHandler) CleanOldAuditLogs(c *gin.Context) {
 		"deleted_count": deletedCount,
 	})
 }
+
+// ExportAuditLogs 导出审计日志
+func (h *SystemHandler) ExportAuditLogs(c *gin.Context) {
+	tenantID := middleware.GetTenantID(c)
+	if tenantID == nil {
+		utils.Error(c, utils.CodeForbidden, "租户ID不能为空")
+		return
+	}
+
+	// 获取查询参数
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10000")) // 导出时使用较大的页面大小
+	operationType := c.Query("operation_type")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+
+	var userID *int64
+	if userIDStr := c.Query("user_id"); userIDStr != "" {
+		if uid, err := strconv.ParseInt(userIDStr, 10, 64); err == nil {
+			userID = &uid
+		}
+	}
+
+	// 获取审计日志
+	logs, total, err := h.systemService.GetAuditLogs(*tenantID, page, pageSize, operationType, userID, startDate, endDate)
+	if err != nil {
+		utils.Error(c, utils.CodeInternalError, err.Error())
+		return
+	}
+
+	// 设置响应头
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition", "attachment; filename=audit_logs_export.csv")
+
+	// 写入BOM以支持Excel正确识别UTF-8
+	c.Writer.Write([]byte{0xEF, 0xBB, 0xBF})
+
+	// 写入CSV头
+	c.Writer.Write([]byte("ID,操作类型,操作描述,资源类型,资源ID,用户ID,请求方法,请求路径,请求参数,响应代码,耗时(ms),IP地址,User-Agent,创建时间\n"))
+
+	// 写入数据行
+	for _, log := range logs {
+		resourceID := ""
+		if log.ResourceID != nil {
+			resourceID = *log.ResourceID
+		}
+
+		row := []string{
+			strconv.FormatInt(log.ID, 10),
+			log.OperationType,
+			log.OperationDesc,
+			log.ResourceType,
+			resourceID,
+			strconv.FormatInt(log.UserID, 10),
+			log.RequestMethod,
+			log.RequestPath,
+			log.RequestParams,
+			strconv.Itoa(log.ResponseCode),
+			strconv.Itoa(log.Duration),
+			log.IPAddress,
+			log.UserAgent,
+			log.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+
+		// CSV转义（处理逗号和引号）
+		for i, field := range row {
+			if i > 0 {
+				c.Writer.Write([]byte(","))
+			}
+			// 如果字段包含逗号或引号，需要用引号包围并转义引号
+			if containsSpecialChar(field) {
+				field = `"` + escapeQuotes(field) + `"`
+			}
+			c.Writer.Write([]byte(field))
+		}
+		c.Writer.Write([]byte("\n"))
+	}
+}
+
+// containsSpecialChar 检查字符串是否包含特殊字符
+func containsSpecialChar(s string) bool {
+	for _, char := range s {
+		if char == ',' || char == '"' || char == '\n' || char == '\r' {
+			return true
+		}
+	}
+	return false
+}
+
+// escapeQuotes 转义引号
+func escapeQuotes(s string) string {
+	result := ""
+	for _, char := range s {
+		if char == '"' {
+			result += `""`
+		} else {
+			result += string(char)
+		}
+	}
+	return result
+}

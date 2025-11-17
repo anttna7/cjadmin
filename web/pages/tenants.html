@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>租户管理 - CJAdmin</title>
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+    <!-- 头部 -->
+    <div class="header">
+        <h1>CJAdmin 客户管理+收款系统</h1>
+        <div class="user-info">
+            <span id="username">管理员</span>
+            <button class="btn btn-sm btn-default" onclick="logout()">退出登录</button>
+        </div>
+    </div>
+
+    <!-- 导航 -->
+    <nav class="nav">
+        <ul class="nav-list">
+            <li class="nav-item"><a href="/pages/tenants.html" class="active">租户管理</a></li>
+            <li class="nav-item"><a href="/pages/customers.html">客户管理</a></li>
+            <li class="nav-item"><a href="/pages/orders.html">订单管理</a></li>
+            <li class="nav-item"><a href="/pages/finance.html">财务管理</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <!-- 搜索区域 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">租户列表</div>
+                <button class="btn btn-primary" onclick="showCreateModal()">+ 创建租户</button>
+            </div>
+
+            <form class="form-inline mb-20" onsubmit="searchTenants(event)">
+                <div class="form-group">
+                    <input type="text" class="form-control" id="searchKeyword" placeholder="搜索租户名称">
+                </div>
+                <div class="form-group">
+                    <select class="form-control" id="searchStatus">
+                        <option value="">全部状态</option>
+                        <option value="active">激活</option>
+                        <option value="disabled">禁用</option>
+                        <option value="expired">过期</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">搜索</button>
+                <button type="button" class="btn btn-default" onclick="resetSearch()">重置</button>
+            </form>
+
+            <!-- 表格 -->
+            <div id="tableContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>加载中...</div>
+                </div>
+            </div>
+
+            <!-- 分页 -->
+            <div id="paginationContainer"></div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑租户模态框 -->
+    <div id="tenantModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">创建租户</h3>
+                <button class="modal-close" onclick="hideModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="tenantForm">
+                    <input type="hidden" id="tenantId">
+
+                    <div class="form-group">
+                        <label class="form-label">租户名称 *</label>
+                        <input type="text" class="form-control" id="tenantName" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">联系人 *</label>
+                        <input type="text" class="form-control" id="contactPerson" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">联系电话 *</label>
+                        <input type="tel" class="form-control" id="contactPhone" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">联系邮箱 *</label>
+                        <input type="email" class="form-control" id="contactEmail" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">地址</label>
+                        <input type="text" class="form-control" id="address">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" id="remark" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="hideModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveTenant()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/utils.js"></script>
+    <script>
+        let pagination;
+        let currentFilters = {};
+
+        // 页面加载时初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            // 检查登录状态
+            if (!isLoggedIn()) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            // 初始化分页
+            pagination = new Pagination('#paginationContainer', {
+                page: 1,
+                pageSize: 10,
+                total: 0,
+                onChange: (page, pageSize) => {
+                    loadTenants(page, pageSize);
+                }
+            });
+
+            // 加载租户列表
+            loadTenants(1, 10);
+        });
+
+        // 加载租户列表
+        async function loadTenants(page = 1, pageSize = 10) {
+            try {
+                const params = {
+                    page,
+                    page_size: pageSize,
+                    ...currentFilters
+                };
+
+                const response = await apiGet('/tenants', params);
+
+                if (response.code === 200) {
+                    renderTable(response.data.list || []);
+                    pagination.setTotal(response.data.total || 0);
+                } else {
+                    throw new Error(response.message);
+                }
+            } catch (error) {
+                document.getElementById('tableContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div>加载失败：${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // 渲染表格
+        function renderTable(tenants) {
+            const statusMap = {
+                active: { text: '激活', type: 'success' },
+                disabled: { text: '禁用', type: 'danger' },
+                expired: { text: '过期', type: 'warning' }
+            };
+
+            if (!tenants || tenants.length === 0) {
+                document.getElementById('tableContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div>暂无租户数据</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>租户名称</th>
+                            <th>联系人</th>
+                            <th>联系电话</th>
+                            <th>联系邮箱</th>
+                            <th>状态</th>
+                            <th>过期时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tenants.map(tenant => `
+                            <tr>
+                                <td>${tenant.id}</td>
+                                <td>${tenant.tenant_name}</td>
+                                <td>${tenant.contact_person}</td>
+                                <td>${tenant.contact_phone}</td>
+                                <td>${tenant.contact_email}</td>
+                                <td>${getStatusBadge(tenant.status, statusMap)}</td>
+                                <td>${formatDate(tenant.expire_at, 'YYYY-MM-DD')}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick="editTenant(${tenant.id})">编辑</button>
+                                    ${tenant.status === 'active' ?
+                                        `<button class="btn btn-sm btn-danger" onclick="disableTenant(${tenant.id})">禁用</button>` :
+                                        `<button class="btn btn-sm btn-success" onclick="enableTenant(${tenant.id})">启用</button>`
+                                    }
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('tableContainer').innerHTML = html;
+        }
+
+        // 搜索租户
+        function searchTenants(event) {
+            event.preventDefault();
+            currentFilters = {
+                keyword: document.getElementById('searchKeyword').value,
+                status: document.getElementById('searchStatus').value
+            };
+            pagination.page = 1;
+            loadTenants(1, pagination.pageSize);
+        }
+
+        // 重置搜索
+        function resetSearch() {
+            document.getElementById('searchKeyword').value = '';
+            document.getElementById('searchStatus').value = '';
+            currentFilters = {};
+            pagination.page = 1;
+            loadTenants(1, pagination.pageSize);
+        }
+
+        // 显示创建模态框
+        function showCreateModal() {
+            document.getElementById('modalTitle').textContent = '创建租户';
+            document.getElementById('tenantForm').reset();
+            document.getElementById('tenantId').value = '';
+            new Modal('tenantModal').show();
+        }
+
+        // 编辑租户
+        async function editTenant(id) {
+            try {
+                const response = await apiGet(`/tenants/${id}`);
+                if (response.code === 200) {
+                    const tenant = response.data;
+                    document.getElementById('modalTitle').textContent = '编辑租户';
+                    document.getElementById('tenantId').value = tenant.id;
+                    document.getElementById('tenantName').value = tenant.tenant_name;
+                    document.getElementById('contactPerson').value = tenant.contact_person;
+                    document.getElementById('contactPhone').value = tenant.contact_phone;
+                    document.getElementById('contactEmail').value = tenant.contact_email;
+                    document.getElementById('address').value = tenant.address || '';
+                    document.getElementById('remark').value = tenant.remark || '';
+                    new Modal('tenantModal').show();
+                }
+            } catch (error) {
+                showToast('加载租户信息失败', 'error');
+            }
+        }
+
+        // 保存租户
+        async function saveTenant() {
+            const form = document.getElementById('tenantForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const id = document.getElementById('tenantId').value;
+            const data = {
+                tenant_name: document.getElementById('tenantName').value,
+                contact_person: document.getElementById('contactPerson').value,
+                contact_phone: document.getElementById('contactPhone').value,
+                contact_email: document.getElementById('contactEmail').value,
+                address: document.getElementById('address').value,
+                remark: document.getElementById('remark').value
+            };
+
+            try {
+                if (id) {
+                    await apiPut(`/tenants/${id}`, data);
+                    showToast('租户更新成功', 'success');
+                } else {
+                    await apiPost('/tenants', data);
+                    showToast('租户创建成功', 'success');
+                }
+
+                hideModal();
+                loadTenants(pagination.page, pagination.pageSize);
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // 禁用租户
+        async function disableTenant(id) {
+            if (!await confirm('确定要禁用该租户吗？')) return;
+
+            try {
+                await apiPut(`/tenants/${id}/disable`);
+                showToast('租户已禁用', 'success');
+                loadTenants(pagination.page, pagination.pageSize);
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // 启用租户
+        async function enableTenant(id) {
+            try {
+                await apiPut(`/tenants/${id}/enable`);
+                showToast('租户已启用', 'success');
+                loadTenants(pagination.page, pagination.pageSize);
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // 隐藏模态框
+        function hideModal() {
+            new Modal('tenantModal').hide();
+        }
+    </script>
+</body>
+</html>
