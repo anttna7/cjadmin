@@ -1,6 +1,24 @@
-# 客户管理+收款系统
+# 客户管理+收款系统（CJAdmin）
 
-一个功能完整的多租户SaaS客户管理与收款系统，基于Go、PostgreSQL和纯HTML5构建。
+一个功能完整的多租户SaaS客户管理与收款系统，基于Go、PostgreSQL构建。
+
+[![Build Status](https://github.com/anttna7/cjadmin/workflows/CI/badge.svg)](https://github.com/anttna7/cjadmin/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/anttna7/cjadmin)](https://goreportcard.com/report/github.com/anttna7/cjadmin)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+## 🚀 快速开始
+
+**只需一条命令即可启动整个系统：**
+
+```bash
+git clone https://github.com/anttna7/cjadmin.git
+cd cjadmin
+docker-compose up -d
+```
+
+**详细步骤请参考：**[快速开始指南 →](./QUICKSTART.md)
+
+---
 
 ## 系统特性
 
