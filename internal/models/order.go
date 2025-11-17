@@ -20,12 +20,21 @@ type Order struct {
 	Metadata       JSONB      `gorm:"type:jsonb" json:"metadata,omitempty"`
 	CreatedBy      *int64     `gorm:"index" json:"created_by"`
 
+	// 第19阶段新增字段 - 返点和收款账户
+	PaymentAccountID *int64  `gorm:"index" json:"payment_account_id,omitempty"` // 收款账户ID
+	PaymentType      string  `gorm:"size:50;index" json:"payment_type,omitempty"` // public（对公）, private（对私）
+	RebateRate       float64 `gorm:"type:decimal(5,2)" json:"rebate_rate,omitempty"` // 返点比例
+	RebateAmount     float64 `gorm:"type:decimal(15,2)" json:"rebate_amount,omitempty"` // 返点总金额
+	CashAmount       float64 `gorm:"type:decimal(15,2)" json:"cash_amount,omitempty"` // 返点现金金额
+	GiftAmount       float64 `gorm:"type:decimal(15,2)" json:"gift_amount,omitempty"` // 返点赠款金额
+
 	// 关联
-	Customer   *Customer            `gorm:"foreignKey:CustomerID" json:"customer,omitempty"`
-	Verifier   *User                `gorm:"foreignKey:VerifiedBy" json:"verifier,omitempty"`
-	Creator    *User                `gorm:"foreignKey:CreatedBy" json:"creator,omitempty"`
-	StatusLogs []OrderStatusLog     `gorm:"foreignKey:OrderID" json:"status_logs,omitempty"`
-	Transactions []AccountTransaction `gorm:"foreignKey:OrderID" json:"transactions,omitempty"`
+	Customer       *Customer            `gorm:"foreignKey:CustomerID" json:"customer,omitempty"`
+	Verifier       *User                `gorm:"foreignKey:VerifiedBy" json:"verifier,omitempty"`
+	Creator        *User                `gorm:"foreignKey:CreatedBy" json:"creator,omitempty"`
+	PaymentAccount *PaymentAccount      `gorm:"foreignKey:PaymentAccountID" json:"payment_account,omitempty"` // 第19阶段新增
+	StatusLogs     []OrderStatusLog     `gorm:"foreignKey:OrderID" json:"status_logs,omitempty"`
+	Transactions   []AccountTransaction `gorm:"foreignKey:OrderID" json:"transactions,omitempty"`
 }
 
 // OrderStatusLog 订单状态变更日志

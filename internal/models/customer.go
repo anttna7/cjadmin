@@ -18,6 +18,32 @@ type Customer struct {
 	Status        string `gorm:"size:20;default:active" json:"status"`
 	CustomFields  JSONB  `gorm:"type:jsonb" json:"custom_fields,omitempty"`
 
+	// 账户和代理商信息（第19阶段新增）
+	AccountID string `gorm:"size:100;index" json:"account_id,omitempty"`
+	AgentName string `gorm:"size:200" json:"agent_name,omitempty"`
+	AgentID   string `gorm:"size:100;index" json:"agent_id,omitempty"`
+	Channel   string `gorm:"size:100" json:"channel,omitempty"`
+
+	// 报备和行业信息（第19阶段新增）
+	ReportTags      []string `gorm:"type:text[]" json:"report_tags,omitempty"`
+	ReportIndustry  string   `gorm:"size:200" json:"report_industry,omitempty"`
+	IndustryLevel1  string   `gorm:"size:200" json:"industry_level1,omitempty"`
+	IndustryLevel2  string   `gorm:"size:200" json:"industry_level2,omitempty"`
+
+	// 返点配置 - 对公充值（第19阶段新增）
+	PublicRebateRate float64 `gorm:"type:decimal(5,2);default:0" json:"public_rebate_rate"`
+	PublicCashRate   float64 `gorm:"type:decimal(5,2);default:100" json:"public_cash_rate"`
+	PublicGiftRate   float64 `gorm:"type:decimal(5,2);default:0" json:"public_gift_rate"`
+
+	// 返点配置 - 对私充值（第19阶段新增）
+	PrivateRebateRate float64 `gorm:"type:decimal(5,2);default:0" json:"private_rebate_rate"`
+	PrivateCashRate   float64 `gorm:"type:decimal(5,2);default:100" json:"private_cash_rate"`
+	PrivateGiftRate   float64 `gorm:"type:decimal(5,2);default:0" json:"private_gift_rate"`
+
+	// 业务信息（第19阶段新增）
+	BusinessPlatform string `gorm:"size:200" json:"business_platform,omitempty"`
+	ContractPeriod   string `gorm:"size:100" json:"contract_period,omitempty"`
+
 	// 关联
 	AssignedUser *User      `gorm:"foreignKey:AssignedTo" json:"assigned_user,omitempty"`
 	Contracts    []Contract `gorm:"foreignKey:CustomerID" json:"contracts,omitempty"`

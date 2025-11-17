@@ -10,6 +10,11 @@ type CustomerAccount struct {
 	Balance     float64 `gorm:"type:decimal(15,2);default:0" json:"balance"`
 	CashBalance float64 `gorm:"type:decimal(15,2);default:0" json:"cash_balance"`
 
+	// 第19阶段新增字段
+	GiftBalance   float64 `gorm:"type:decimal(15,2);default:0" json:"gift_balance"`   // 赠款余额
+	CreditBalance float64 `gorm:"type:decimal(15,2);default:0" json:"credit_balance"` // 授信余额（已使用）
+	CreditLimit   float64 `gorm:"type:decimal(15,2);default:0" json:"credit_limit"`   // 授信额度上限
+
 	// 关联
 	Customer     *Customer             `gorm:"foreignKey:CustomerID" json:"customer,omitempty"`
 	Transactions []AccountTransaction  `gorm:"foreignKey:AccountID" json:"transactions,omitempty"`
@@ -27,6 +32,13 @@ type AccountTransaction struct {
 	BalanceAfter      float64   `gorm:"type:decimal(15,2)" json:"balance_after"`
 	CashBalanceBefore float64   `gorm:"type:decimal(15,2)" json:"cash_balance_before"`
 	CashBalanceAfter  float64   `gorm:"type:decimal(15,2)" json:"cash_balance_after"`
+
+	// 第19阶段新增字段
+	GiftBalanceBefore   float64 `gorm:"type:decimal(15,2)" json:"gift_balance_before,omitempty"`
+	GiftBalanceAfter    float64 `gorm:"type:decimal(15,2)" json:"gift_balance_after,omitempty"`
+	CreditBalanceBefore float64 `gorm:"type:decimal(15,2)" json:"credit_balance_before,omitempty"`
+	CreditBalanceAfter  float64 `gorm:"type:decimal(15,2)" json:"credit_balance_after,omitempty"`
+
 	Notes             string    `gorm:"type:text" json:"notes"`
 	CreatedAt         time.Time `gorm:"autoCreateTime" json:"created_at"`
 
