@@ -186,6 +186,91 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 				orders.GET("", middleware.RequirePermission("order.read"), orderHandler.ListOrders)
 				orders.GET("/:id", middleware.RequirePermission("order.read"), orderHandler.GetOrder)
 			}
+
+			// 合同管理
+			contractHandler := handler.NewContractHandler()
+			contracts := authorized.Group("/contracts")
+			contracts.Use(middleware.TenantMiddleware())
+			{
+				contracts.POST("", middleware.RequirePermission("customer.create"), contractHandler.Create)
+				contracts.GET("", middleware.RequirePermission("customer.read"), contractHandler.List)
+				contracts.GET("/:id", middleware.RequirePermission("customer.read"), contractHandler.Get)
+				contracts.PUT("/:id", middleware.RequirePermission("customer.update"), contractHandler.Update)
+				contracts.DELETE("/:id", middleware.RequirePermission("customer.delete"), contractHandler.Delete)
+				contracts.PUT("/:id/status", middleware.RequirePermission("customer.update"), contractHandler.UpdateStatus)
+				contracts.GET("/customer/:customer_id", middleware.RequirePermission("customer.read"), contractHandler.GetByCustomer)
+				contracts.GET("/statistics", middleware.RequirePermission("customer.read"), contractHandler.GetStatistics)
+			}
+
+			// 发票管理
+			invoiceHandler := handler.NewInvoiceHandler()
+			invoices := authorized.Group("/invoices")
+			invoices.Use(middleware.TenantMiddleware())
+			{
+				invoices.POST("", middleware.RequirePermission("finance.create"), invoiceHandler.Create)
+				invoices.GET("", middleware.RequirePermission("finance.read"), invoiceHandler.List)
+				invoices.GET("/:id", middleware.RequirePermission("finance.read"), invoiceHandler.Get)
+				invoices.PUT("/:id", middleware.RequirePermission("finance.update"), invoiceHandler.Update)
+				invoices.DELETE("/:id", middleware.RequirePermission("finance.delete"), invoiceHandler.Delete)
+				invoices.PUT("/:id/issue", middleware.RequirePermission("finance.verify"), invoiceHandler.Issue)
+				invoices.PUT("/:id/cancel", middleware.RequirePermission("finance.verify"), invoiceHandler.Cancel)
+				invoices.GET("/customer/:customer_id", middleware.RequirePermission("finance.read"), invoiceHandler.GetByCustomer)
+				invoices.GET("/order/:order_id", middleware.RequirePermission("finance.read"), invoiceHandler.GetByOrder)
+				invoices.GET("/statistics", middleware.RequirePermission("finance.read"), invoiceHandler.GetStatistics)
+			}
+
+			// 自定义表单管理
+			formHandler := handler.NewFormHandler()
+			forms := authorized.Group("/forms")
+			forms.Use(middleware.TenantMiddleware())
+			{
+				// 表单定义管理
+				forms.POST("", middleware.RequirePermission("system.create"), formHandler.Create)
+				forms.GET("", middleware.RequirePermission("system.read"), formHandler.List)
+				forms.GET("/:id", middleware.RequirePermission("system.read"), formHandler.Get)
+				forms.GET("/code/:code", middleware.RequirePermission("system.read"), formHandler.GetByCode)
+				forms.PUT("/:id", middleware.RequirePermission("system.update"), formHandler.Update)
+				forms.DELETE("/:id", middleware.RequirePermission("system.delete"), formHandler.Delete)
+				forms.GET("/statistics", middleware.RequirePermission("system.read"), formHandler.GetStatistics)
+
+				// 表单数据管理
+				forms.POST("/customer/:customer_id/submit", middleware.RequirePermission("customer.create"), formHandler.SubmitData)
+				forms.GET("/data", middleware.RequirePermission("customer.read"), formHandler.QueryData)
+				forms.GET("/data/:data_id", middleware.RequirePermission("customer.read"), formHandler.GetFormData)
+				forms.GET("/data/customer/:customer_id", middleware.RequirePermission("customer.read"), formHandler.GetByCustomer)
+				forms.GET("/data/form/:form_id", middleware.RequirePermission("customer.read"), formHandler.GetByForm)
+				forms.GET("/export/:form_id", middleware.RequirePermission("customer.read"), formHandler.ExportData)
+			}
+
+			// 系统设置管理
+			systemHandler := handler.NewSystemHandler()
+			settings := authorized.Group("/settings")
+			settings.Use(middleware.TenantMiddleware())
+			{
+				settings.POST("", middleware.RequirePermission("system.update"), systemHandler.SetSetting)
+				settings.GET("", middleware.RequirePermission("system.read"), systemHandler.ListSettings)
+				settings.GET("/:key", middleware.RequirePermission("system.read"), systemHandler.GetSetting)
+				settings.DELETE("/:key", middleware.RequirePermission("system.delete"), systemHandler.DeleteSetting)
+			}
+
+			// 平台级系统设置（仅平台管理员）
+			platformSettings := authorized.Group("/platform/settings")
+			platformSettings.Use(middleware.RequirePlatformAdmin())
+			{
+				platformSettings.POST("", systemHandler.SetPlatformSetting)
+				platformSettings.GET("/:key", systemHandler.GetPlatformSetting)
+			}
+
+			// 审计日志管理
+			auditLogs := authorized.Group("/audit-logs")
+			auditLogs.Use(middleware.TenantMiddleware())
+			{
+				auditLogs.POST("", middleware.RequirePermission("system.create"), systemHandler.CreateAuditLog)
+				auditLogs.GET("", middleware.RequirePermission("system.read"), systemHandler.QueryAuditLogs)
+				auditLogs.GET("/:id", middleware.RequirePermission("system.read"), systemHandler.GetAuditLog)
+				auditLogs.GET("/statistics", middleware.RequirePermission("system.read"), systemHandler.GetAuditStatistics)
+				auditLogs.POST("/clean", middleware.RequirePermission("system.delete"), systemHandler.CleanOldAuditLogs)
+			}
 		}
 	}
 
