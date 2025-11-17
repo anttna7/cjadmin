@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统设置 - CJAdmin</title>
+    <link rel="stylesheet" href="../static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>系统设置</h1>
+        </div>
+
+        <!-- Tab导航 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('basic')">基本设置</button>
+            <button class="tab-btn" onclick="switchTab('email')">邮件配置</button>
+            <button class="tab-btn" onclick="switchTab('notification')">通知设置</button>
+            <button class="tab-btn" onclick="switchTab('security')">安全设置</button>
+            <button class="tab-btn" onclick="switchTab('audit')">审计日志</button>
+        </div>
+
+        <!-- 基本设置Tab -->
+        <div id="basicTab" class="tab-content active">
+            <div class="card">
+                <div class="card-header">
+                    <h3>系统信息</h3>
+                </div>
+                <div class="card-body">
+                    <form id="basicForm" onsubmit="handleBasicSubmit(event)">
+                        <div class="form-group">
+                            <label>系统名称</label>
+                            <input type="text" id="systemName" class="form-control"
+                                   placeholder="如：CJAdmin客户管理系统">
+                        </div>
+
+                        <div class="form-group">
+                            <label>系统版本</label>
+                            <input type="text" id="systemVersion" class="form-control" readonly>
+                        </div>
+
+                        <div class="form-group">
+                            <label>公司名称</label>
+                            <input type="text" id="companyName" class="form-control"
+                                   placeholder="您的公司名称">
+                        </div>
+
+                        <div class="form-group">
+                            <label>联系邮箱</label>
+                            <input type="email" id="contactEmail" class="form-control"
+                                   placeholder="support@example.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label>联系电话</label>
+                            <input type="tel" id="contactPhone" class="form-control"
+                                   placeholder="客服电话">
+                        </div>
+
+                        <div class="form-group">
+                            <label>系统公告</label>
+                            <textarea id="systemAnnouncement" class="form-control" rows="3"
+                                      placeholder="系统公告内容，将显示在用户登录后"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>维护模式</label>
+                            <div class="form-check">
+                                <input type="checkbox" id="maintenanceMode" class="form-check-input">
+                                <label for="maintenanceMode" class="form-check-label">
+                                    启用维护模式（启用后普通用户将无法访问系统）
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">保存设置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 邮件配置Tab -->
+        <div id="emailTab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h3>SMTP邮件配置</h3>
+                    <p class="text-muted">用于发送系统通知邮件</p>
+                </div>
+                <div class="card-body">
+                    <form id="emailForm" onsubmit="handleEmailSubmit(event)">
+                        <div class="form-group">
+                            <label>SMTP服务器 <span class="required">*</span></label>
+                            <input type="text" id="smtpHost" class="form-control"
+                                   placeholder="如：smtp.gmail.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label>SMTP端口 <span class="required">*</span></label>
+                            <input type="number" id="smtpPort" class="form-control"
+                                   placeholder="如：587 或 465">
+                        </div>
+
+                        <div class="form-group">
+                            <label>发件人邮箱 <span class="required">*</span></label>
+                            <input type="email" id="smtpUsername" class="form-control"
+                                   placeholder="noreply@example.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label>邮箱密码/授权码 <span class="required">*</span></label>
+                            <input type="password" id="smtpPassword" class="form-control"
+                                   placeholder="邮箱密码或授权码">
+                            <small class="form-text">
+                                注意：部分邮箱服务商需要使用授权码而非密码
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>发件人名称</label>
+                            <input type="text" id="smtpFromName" class="form-control"
+                                   placeholder="如：CJAdmin系统">
+                        </div>
+
+                        <div class="form-group">
+                            <label>加密方式</label>
+                            <select id="smtpEncryption" class="form-control">
+                                <option value="none">无加密</option>
+                                <option value="tls">TLS</option>
+                                <option value="ssl">SSL</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>启用邮件</label>
+                            <div class="form-check">
+                                <input type="checkbox" id="emailEnabled" class="form-check-input" checked>
+                                <label for="emailEnabled" class="form-check-label">启用邮件发送功能</label>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">保存配置</button>
+                            <button type="button" class="btn btn-default" onclick="testEmail()">
+                                发送测试邮件
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 通知设置Tab -->
+        <div id="notificationTab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h3>通知设置</h3>
+                    <p class="text-muted">配置各类事件的通知方式</p>
+                </div>
+                <div class="card-body">
+                    <form id="notificationForm" onsubmit="handleNotificationSubmit(event)">
+                        <div class="notification-group">
+                            <h4>订单通知</h4>
+                            <div class="form-check">
+                                <input type="checkbox" id="notifyOrderCreated" class="form-check-input" checked>
+                                <label for="notifyOrderCreated" class="form-check-label">
+                                    新订单创建时通知管理员
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="notifyOrderCompleted" class="form-check-input" checked>
+                                <label for="notifyOrderCompleted" class="form-check-label">
+                                    订单完成时通知客户
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="notifyOrderFailed" class="form-check-input" checked>
+                                <label for="notifyOrderFailed" class="form-check-label">
+                                    订单失败时通知管理员和客户
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="notification-group">
+                            <h4>支付通知</h4>
+                            <div class="form-check">
+                                <input type="checkbox" id="notifyPaymentPending" class="form-check-input" checked>
+                                <label for="notifyPaymentPending" class="form-check-label">
+                                    有新的待审批支付时通知管理员
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="notifyPaymentApproved" class="form-check-input" checked>
+                                <label for="notifyPaymentApproved" class="form-check-label">
+                                    支付审批通过时通知申请人
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="notifyPaymentRejected" class="form-check-input" checked>
+                                <label for="notifyPaymentRejected" class="form-check-label">
+                                    支付审批拒绝时通知申请人
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="notification-group">
+                            <h4>系统通知</h4>
+                            <div class="form-check">
+                                <input type="checkbox" id="notifySystemError" class="form-check-input" checked>
+                                <label for="notifySystemError" class="form-check-label">
+                                    系统错误时通知管理员
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="notifyLoginFailed" class="form-check-input">
+                                <label for="notifyLoginFailed" class="form-check-label">
+                                    多次登录失败时通知管理员
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="notifyDataBackup" class="form-check-input" checked>
+                                <label for="notifyDataBackup" class="form-check-label">
+                                    数据备份完成时通知管理员
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>通知接收邮箱</label>
+                            <input type="text" id="notificationEmails" class="form-control"
+                                   placeholder="多个邮箱用逗号分隔，如：admin1@example.com, admin2@example.com">
+                            <small class="form-text">
+                                这些邮箱将接收所有系统通知
+                            </small>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">保存设置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 安全设置Tab -->
+        <div id="securityTab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h3>安全设置</h3>
+                </div>
+                <div class="card-body">
+                    <form id="securityForm" onsubmit="handleSecuritySubmit(event)">
+                        <div class="form-group">
+                            <label>密码最小长度</label>
+                            <input type="number" id="passwordMinLength" class="form-control"
+                                   min="6" max="32" value="8">
+                            <small class="form-text">建议至少8位</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>密码复杂度要求</label>
+                            <div class="form-check">
+                                <input type="checkbox" id="passwordRequireUppercase" class="form-check-input">
+                                <label for="passwordRequireUppercase" class="form-check-label">
+                                    必须包含大写字母
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="passwordRequireLowercase" class="form-check-input">
+                                <label for="passwordRequireLowercase" class="form-check-label">
+                                    必须包含小写字母
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="passwordRequireNumber" class="form-check-input">
+                                <label for="passwordRequireNumber" class="form-check-label">
+                                    必须包含数字
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="passwordRequireSpecial" class="form-check-input">
+                                <label for="passwordRequireSpecial" class="form-check-label">
+                                    必须包含特殊字符
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>密码过期天数</label>
+                            <input type="number" id="passwordExpiryDays" class="form-control"
+                                   min="0" value="90" placeholder="0表示永不过期">
+                            <small class="form-text">密码多少天后需要更换，0表示永不过期</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>登录失败锁定</label>
+                            <input type="number" id="loginFailedLockCount" class="form-control"
+                                   min="0" value="5" placeholder="0表示不锁定">
+                            <small class="form-text">连续失败多少次后锁定账号，0表示不锁定</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>账号锁定时长（分钟）</label>
+                            <input type="number" id="loginLockDuration" class="form-control"
+                                   min="1" value="30">
+                        </div>
+
+                        <div class="form-group">
+                            <label>会话超时时间（分钟）</label>
+                            <input type="number" id="sessionTimeout" class="form-control"
+                                   min="5" value="30">
+                            <small class="form-text">用户无操作多久后自动退出登录</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Token有效期（小时）</label>
+                            <input type="number" id="tokenExpiry" class="form-control"
+                                   min="1" value="24">
+                        </div>
+
+                        <div class="form-group">
+                            <label>启用IP白名单</label>
+                            <div class="form-check">
+                                <input type="checkbox" id="enableIpWhitelist" class="form-check-input">
+                                <label for="enableIpWhitelist" class="form-check-label">
+                                    只允许白名单IP访问管理后台
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>IP白名单</label>
+                            <textarea id="ipWhitelist" class="form-control" rows="3"
+                                      placeholder="每行一个IP或IP段，如：&#10;192.168.1.100&#10;10.0.0.0/8"></textarea>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">保存设置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 审计日志Tab -->
+        <div id="auditTab" class="tab-content">
+            <div class="card">
+                <div class="card-body">
+                    <form class="search-form" onsubmit="handleAuditSearch(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>操作类型</label>
+                                <select id="filterOperationType" class="form-control">
+                                    <option value="">全部</option>
+                                    <option value="create">创建</option>
+                                    <option value="update">更新</option>
+                                    <option value="delete">删除</option>
+                                    <option value="login">登录</option>
+                                    <option value="logout">登出</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>用户名</label>
+                                <input type="text" id="filterAuditUser" class="form-control"
+                                       placeholder="操作用户">
+                            </div>
+                            <div class="form-group">
+                                <label>开始日期</label>
+                                <input type="date" id="filterAuditStartDate" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>结束日期</label>
+                                <input type="date" id="filterAuditEndDate" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">搜索</button>
+                            <button type="button" class="btn btn-default"
+                                    onclick="resetAuditFilters()">重置</button>
+                            <button type="button" class="btn btn-success" onclick="exportAuditLogs()">
+                                导出日志
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div id="auditTableContainer">
+                        <div class="loading">加载中...</div>
+                    </div>
+                    <div id="auditPaginationContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/js/utils.js"></script>
+    <script>
+        let auditPagination;
+        let currentAuditFilters = {};
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+
+            auditPagination = new Pagination(
+                document.getElementById('auditPaginationContainer'),
+                {
+                    page: 1,
+                    pageSize: 10,
+                    total: 0,
+                    onChange: (page, pageSize) => {
+                        loadAuditLogs(page, pageSize);
+                    }
+                }
+            );
+
+            loadBasicSettings();
+        });
+
+        // 切换Tab
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+
+            // 加载对应数据
+            if (tabName === 'basic') {
+                loadBasicSettings();
+            } else if (tabName === 'email') {
+                loadEmailSettings();
+            } else if (tabName === 'notification') {
+                loadNotificationSettings();
+            } else if (tabName === 'security') {
+                loadSecuritySettings();
+            } else if (tabName === 'audit') {
+                loadAuditLogs();
+            }
+        }
+
+        // 加载基本设置
+        async function loadBasicSettings() {
+            try {
+                const response = await apiGet('/settings/basic');
+
+                if (response.code === 200) {
+                    const settings = response.data;
+                    document.getElementById('systemName').value = settings.system_name || '';
+                    document.getElementById('systemVersion').value = settings.system_version || 'v1.0.0';
+                    document.getElementById('companyName').value = settings.company_name || '';
+                    document.getElementById('contactEmail').value = settings.contact_email || '';
+                    document.getElementById('contactPhone').value = settings.contact_phone || '';
+                    document.getElementById('systemAnnouncement').value = settings.system_announcement || '';
+                    document.getElementById('maintenanceMode').checked = settings.maintenance_mode || false;
+                }
+            } catch (error) {
+                console.error('加载基本设置失败:', error);
+            }
+        }
+
+        // 保存基本设置
+        async function handleBasicSubmit(event) {
+            event.preventDefault();
+
+            const data = {
+                system_name: document.getElementById('systemName').value,
+                company_name: document.getElementById('companyName').value,
+                contact_email: document.getElementById('contactEmail').value,
+                contact_phone: document.getElementById('contactPhone').value,
+                system_announcement: document.getElementById('systemAnnouncement').value,
+                maintenance_mode: document.getElementById('maintenanceMode').checked
+            };
+
+            try {
+                const response = await apiPost('/settings/basic', data);
+
+                if (response.code === 200) {
+                    showToast('设置保存成功', 'success');
+                } else {
+                    showToast(response.message || '保存失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存设置失败:', error);
+                showToast('保存设置失败', 'error');
+            }
+        }
+
+        // 加载邮件设置
+        async function loadEmailSettings() {
+            try {
+                const response = await apiGet('/settings/email');
+
+                if (response.code === 200) {
+                    const settings = response.data;
+                    document.getElementById('smtpHost').value = settings.smtp_host || '';
+                    document.getElementById('smtpPort').value = settings.smtp_port || '587';
+                    document.getElementById('smtpUsername').value = settings.smtp_username || '';
+                    document.getElementById('smtpPassword').value = settings.smtp_password || '';
+                    document.getElementById('smtpFromName').value = settings.smtp_from_name || '';
+                    document.getElementById('smtpEncryption').value = settings.smtp_encryption || 'tls';
+                    document.getElementById('emailEnabled').checked = settings.email_enabled !== false;
+                }
+            } catch (error) {
+                console.error('加载邮件设置失败:', error);
+            }
+        }
+
+        // 保存邮件设置
+        async function handleEmailSubmit(event) {
+            event.preventDefault();
+
+            const data = {
+                smtp_host: document.getElementById('smtpHost').value,
+                smtp_port: parseInt(document.getElementById('smtpPort').value),
+                smtp_username: document.getElementById('smtpUsername').value,
+                smtp_password: document.getElementById('smtpPassword').value,
+                smtp_from_name: document.getElementById('smtpFromName').value,
+                smtp_encryption: document.getElementById('smtpEncryption').value,
+                email_enabled: document.getElementById('emailEnabled').checked
+            };
+
+            try {
+                const response = await apiPost('/settings/email', data);
+
+                if (response.code === 200) {
+                    showToast('邮件配置保存成功', 'success');
+                } else {
+                    showToast(response.message || '保存失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存邮件配置失败:', error);
+                showToast('保存邮件配置失败', 'error');
+            }
+        }
+
+        // 测试邮件
+        async function testEmail() {
+            const email = prompt('请输入接收测试邮件的地址:');
+            if (!email) return;
+
+            try {
+                const response = await apiPost('/settings/email/test', { to: email });
+
+                if (response.code === 200) {
+                    showToast('测试邮件已发送，请查收', 'success');
+                } else {
+                    showToast(response.message || '发送失败', 'error');
+                }
+            } catch (error) {
+                console.error('发送测试邮件失败:', error);
+                showToast('发送测试邮件失败', 'error');
+            }
+        }
+
+        // 加载通知设置
+        async function loadNotificationSettings() {
+            try {
+                const response = await apiGet('/settings/notification');
+
+                if (response.code === 200) {
+                    const settings = response.data;
+                    document.getElementById('notifyOrderCreated').checked = settings.notify_order_created !== false;
+                    document.getElementById('notifyOrderCompleted').checked = settings.notify_order_completed !== false;
+                    document.getElementById('notifyOrderFailed').checked = settings.notify_order_failed !== false;
+                    document.getElementById('notifyPaymentPending').checked = settings.notify_payment_pending !== false;
+                    document.getElementById('notifyPaymentApproved').checked = settings.notify_payment_approved !== false;
+                    document.getElementById('notifyPaymentRejected').checked = settings.notify_payment_rejected !== false;
+                    document.getElementById('notifySystemError').checked = settings.notify_system_error !== false;
+                    document.getElementById('notifyLoginFailed').checked = settings.notify_login_failed || false;
+                    document.getElementById('notifyDataBackup').checked = settings.notify_data_backup !== false;
+                    document.getElementById('notificationEmails').value = settings.notification_emails || '';
+                }
+            } catch (error) {
+                console.error('加载通知设置失败:', error);
+            }
+        }
+
+        // 保存通知设置
+        async function handleNotificationSubmit(event) {
+            event.preventDefault();
+
+            const data = {
+                notify_order_created: document.getElementById('notifyOrderCreated').checked,
+                notify_order_completed: document.getElementById('notifyOrderCompleted').checked,
+                notify_order_failed: document.getElementById('notifyOrderFailed').checked,
+                notify_payment_pending: document.getElementById('notifyPaymentPending').checked,
+                notify_payment_approved: document.getElementById('notifyPaymentApproved').checked,
+                notify_payment_rejected: document.getElementById('notifyPaymentRejected').checked,
+                notify_system_error: document.getElementById('notifySystemError').checked,
+                notify_login_failed: document.getElementById('notifyLoginFailed').checked,
+                notify_data_backup: document.getElementById('notifyDataBackup').checked,
+                notification_emails: document.getElementById('notificationEmails').value
+            };
+
+            try {
+                const response = await apiPost('/settings/notification', data);
+
+                if (response.code === 200) {
+                    showToast('通知设置保存成功', 'success');
+                } else {
+                    showToast(response.message || '保存失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存通知设置失败:', error);
+                showToast('保存通知设置失败', 'error');
+            }
+        }
+
+        // 加载安全设置
+        async function loadSecuritySettings() {
+            try {
+                const response = await apiGet('/settings/security');
+
+                if (response.code === 200) {
+                    const settings = response.data;
+                    document.getElementById('passwordMinLength').value = settings.password_min_length || 8;
+                    document.getElementById('passwordRequireUppercase').checked = settings.password_require_uppercase || false;
+                    document.getElementById('passwordRequireLowercase').checked = settings.password_require_lowercase || false;
+                    document.getElementById('passwordRequireNumber').checked = settings.password_require_number || false;
+                    document.getElementById('passwordRequireSpecial').checked = settings.password_require_special || false;
+                    document.getElementById('passwordExpiryDays').value = settings.password_expiry_days || 90;
+                    document.getElementById('loginFailedLockCount').value = settings.login_failed_lock_count || 5;
+                    document.getElementById('loginLockDuration').value = settings.login_lock_duration || 30;
+                    document.getElementById('sessionTimeout').value = settings.session_timeout || 30;
+                    document.getElementById('tokenExpiry').value = settings.token_expiry || 24;
+                    document.getElementById('enableIpWhitelist').checked = settings.enable_ip_whitelist || false;
+                    document.getElementById('ipWhitelist').value = settings.ip_whitelist || '';
+                }
+            } catch (error) {
+                console.error('加载安全设置失败:', error);
+            }
+        }
+
+        // 保存安全设置
+        async function handleSecuritySubmit(event) {
+            event.preventDefault();
+
+            const data = {
+                password_min_length: parseInt(document.getElementById('passwordMinLength').value),
+                password_require_uppercase: document.getElementById('passwordRequireUppercase').checked,
+                password_require_lowercase: document.getElementById('passwordRequireLowercase').checked,
+                password_require_number: document.getElementById('passwordRequireNumber').checked,
+                password_require_special: document.getElementById('passwordRequireSpecial').checked,
+                password_expiry_days: parseInt(document.getElementById('passwordExpiryDays').value),
+                login_failed_lock_count: parseInt(document.getElementById('loginFailedLockCount').value),
+                login_lock_duration: parseInt(document.getElementById('loginLockDuration').value),
+                session_timeout: parseInt(document.getElementById('sessionTimeout').value),
+                token_expiry: parseInt(document.getElementById('tokenExpiry').value),
+                enable_ip_whitelist: document.getElementById('enableIpWhitelist').checked,
+                ip_whitelist: document.getElementById('ipWhitelist').value
+            };
+
+            try {
+                const response = await apiPost('/settings/security', data);
+
+                if (response.code === 200) {
+                    showToast('安全设置保存成功', 'success');
+                } else {
+                    showToast(response.message || '保存失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存安全设置失败:', error);
+                showToast('保存安全设置失败', 'error');
+            }
+        }
+
+        // 加载审计日志
+        async function loadAuditLogs(page = 1, pageSize = 10) {
+            try {
+                const params = {
+                    page,
+                    page_size: pageSize,
+                    ...currentAuditFilters
+                };
+
+                const response = await apiGet('/system/audit-logs', params);
+
+                if (response.code === 200) {
+                    renderAuditTable(response.data.list || []);
+                    auditPagination.setTotal(response.data.total || 0);
+                } else {
+                    showToast(response.message || '加载审计日志失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载审计日志失败:', error);
+                showToast('加载审计日志失败', 'error');
+            }
+        }
+
+        // 渲染审计日志表格
+        function renderAuditTable(logs) {
+            if (logs.length === 0) {
+                document.getElementById('auditTableContainer').innerHTML =
+                    '<div class="empty-state">暂无审计日志</div>';
+                return;
+            }
+
+            const html = `
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>操作类型</th>
+                            <th>操作描述</th>
+                            <th>操作用户</th>
+                            <th>IP地址</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${logs.map(log => `
+                            <tr>
+                                <td>${formatDateTime(log.created_at)}</td>
+                                <td>
+                                    <span class="badge badge-info">${log.operation_type || '-'}</span>
+                                </td>
+                                <td>${log.description || '-'}</td>
+                                <td>${log.username || '-'}</td>
+                                <td><code>${log.ip_address || '-'}</code></td>
+                                <td>
+                                    <span class="badge badge-${log.status === 'success' ? 'success' : 'danger'}">
+                                        ${log.status === 'success' ? '成功' : '失败'}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('auditTableContainer').innerHTML = html;
+        }
+
+        // 审计日志搜索
+        function handleAuditSearch(event) {
+            event.preventDefault();
+
+            currentAuditFilters = {
+                operation_type: document.getElementById('filterOperationType').value,
+                username: document.getElementById('filterAuditUser').value,
+                start_date: document.getElementById('filterAuditStartDate').value,
+                end_date: document.getElementById('filterAuditEndDate').value
+            };
+
+            Object.keys(currentAuditFilters).forEach(key => {
+                if (!currentAuditFilters[key]) {
+                    delete currentAuditFilters[key];
+                }
+            });
+
+            auditPagination.page = 1;
+            loadAuditLogs(1, auditPagination.pageSize);
+        }
+
+        // 重置审计日志过滤
+        function resetAuditFilters() {
+            document.getElementById('filterOperationType').value = '';
+            document.getElementById('filterAuditUser').value = '';
+            document.getElementById('filterAuditStartDate').value = '';
+            document.getElementById('filterAuditEndDate').value = '';
+            currentAuditFilters = {};
+            auditPagination.page = 1;
+            loadAuditLogs(1, auditPagination.pageSize);
+        }
+
+        // 导出审计日志
+        async function exportAuditLogs() {
+            try {
+                const params = new URLSearchParams(currentAuditFilters);
+                const token = getToken();
+
+                const response = await fetch(`${API_BASE_URL}/system/audit-logs/export?${params}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `audit_logs_${formatDate(new Date())}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showToast('导出成功', 'success');
+                } else {
+                    showToast('导出失败', 'error');
+                }
+            } catch (error) {
+                console.error('导出失败:', error);
+                showToast('导出失败', 'error');
+            }
+        }
+    </script>
+
+    <style>
+        .notification-group {
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .notification-group:last-child {
+            border-bottom: none;
+        }
+
+        .notification-group h4 {
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .form-check-input {
+            margin: 0;
+        }
+
+        .form-check-label {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .table-sm {
+            font-size: 0.875rem;
+        }
+
+        .table-sm th,
+        .table-sm td {
+            padding: 8px;
+        }
+    </style>
+</body>
+</html>

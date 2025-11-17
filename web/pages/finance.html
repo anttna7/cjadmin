@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>财务管理 - CJAdmin</title>
+    <link rel="stylesheet" href="../static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>财务管理</h1>
+            <div class="page-actions">
+                <button class="btn btn-success" onclick="exportFinance()">
+                    <span>📊 导出财务报表</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-label">待审批支付</div>
+                <div class="stat-value" id="pendingPayments">0</div>
+                <div class="stat-change text-warning">等待处理</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">本月收入</div>
+                <div class="stat-value" id="monthlyIncome">¥0.00</div>
+                <div class="stat-change text-success">+0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">本月支出</div>
+                <div class="stat-value" id="monthlyExpense">¥0.00</div>
+                <div class="stat-change text-danger">+0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">待开发票</div>
+                <div class="stat-value" id="pendingInvoices">0</div>
+                <div class="stat-change text-info">待处理</div>
+            </div>
+        </div>
+
+        <!-- Tab导航 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('payments')">支付审批</button>
+            <button class="tab-btn" onclick="switchTab('invoices')">发票管理</button>
+            <button class="tab-btn" onclick="switchTab('reports')">财务报表</button>
+        </div>
+
+        <!-- 支付审批Tab -->
+        <div id="paymentsTab" class="tab-content active">
+            <!-- 搜索过滤区 -->
+            <div class="card">
+                <div class="card-body">
+                    <form class="search-form" onsubmit="handlePaymentSearch(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>审批状态</label>
+                                <select id="filterPaymentStatus" class="form-control">
+                                    <option value="">全部</option>
+                                    <option value="pending">待审批</option>
+                                    <option value="approved">已批准</option>
+                                    <option value="rejected">已拒绝</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>客户名称</label>
+                                <input type="text" id="filterPaymentCustomer" class="form-control"
+                                       placeholder="搜索客户">
+                            </div>
+                            <div class="form-group">
+                                <label>开始日期</label>
+                                <input type="date" id="filterPaymentStartDate" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>结束日期</label>
+                                <input type="date" id="filterPaymentEndDate" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">搜索</button>
+                            <button type="button" class="btn btn-default"
+                                    onclick="resetPaymentFilters()">重置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 支付列表 -->
+            <div class="card">
+                <div class="card-body">
+                    <div id="paymentTableContainer">
+                        <div class="loading">加载中...</div>
+                    </div>
+                    <div id="paymentPaginationContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 发票管理Tab -->
+        <div id="invoicesTab" class="tab-content">
+            <!-- 搜索过滤区 -->
+            <div class="card">
+                <div class="card-body">
+                    <form class="search-form" onsubmit="handleInvoiceSearch(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>发票状态</label>
+                                <select id="filterInvoiceStatus" class="form-control">
+                                    <option value="">全部</option>
+                                    <option value="pending">待开具</option>
+                                    <option value="issued">已开具</option>
+                                    <option value="sent">已发送</option>
+                                    <option value="cancelled">已作废</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>客户名称</label>
+                                <input type="text" id="filterInvoiceCustomer" class="form-control"
+                                       placeholder="搜索客户">
+                            </div>
+                            <div class="form-group">
+                                <label>发票编号</label>
+                                <input type="text" id="filterInvoiceNo" class="form-control"
+                                       placeholder="发票编号">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">搜索</button>
+                            <button type="button" class="btn btn-default"
+                                    onclick="resetInvoiceFilters()">重置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 发票列表 -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-header">
+                        <button class="btn btn-primary" onclick="showCreateInvoiceModal()">
+                            + 创建发票
+                        </button>
+                    </div>
+                    <div id="invoiceTableContainer">
+                        <div class="loading">加载中...</div>
+                    </div>
+                    <div id="invoicePaginationContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 财务报表Tab -->
+        <div id="reportsTab" class="tab-content">
+            <div class="card">
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>报表类型</label>
+                            <select id="reportType" class="form-control" onchange="loadReport()">
+                                <option value="income">收入报表</option>
+                                <option value="expense">支出报表</option>
+                                <option value="balance">收支平衡表</option>
+                                <option value="customer">客户账单</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>时间范围</label>
+                            <select id="reportPeriod" class="form-control" onchange="loadReport()">
+                                <option value="today">今日</option>
+                                <option value="week">本周</option>
+                                <option value="month" selected>本月</option>
+                                <option value="quarter">本季度</option>
+                                <option value="year">今年</option>
+                                <option value="custom">自定义</option>
+                            </select>
+                        </div>
+                        <div id="customDateRange" style="display: none;">
+                            <div class="form-group">
+                                <label>开始日期</label>
+                                <input type="date" id="reportStartDate" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>结束日期</label>
+                                <input type="date" id="reportEndDate" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div id="reportContainer">
+                        <div class="loading">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 支付审批模态框 -->
+    <div id="paymentApprovalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>支付审批</h2>
+                <button class="close" onclick="hidePaymentModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="paymentDetailContent"></div>
+                <form id="approvalForm" onsubmit="handleApproval(event)">
+                    <input type="hidden" id="paymentId">
+
+                    <div class="form-group">
+                        <label>审批意见 <span class="required">*</span></label>
+                        <textarea id="approvalNotes" class="form-control" rows="3"
+                                  required placeholder="请输入审批意见"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" name="action" value="approve"
+                                class="btn btn-success" onclick="setApprovalAction('approve')">
+                            批准
+                        </button>
+                        <button type="submit" name="action" value="reject"
+                                class="btn btn-danger" onclick="setApprovalAction('reject')">
+                            拒绝
+                        </button>
+                        <button type="button" class="btn btn-default" onclick="hidePaymentModal()">
+                            取消
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建发票模态框 -->
+    <div id="invoiceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="invoiceModalTitle">创建发票</h2>
+                <button class="close" onclick="hideInvoiceModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="invoiceForm" onsubmit="handleInvoiceSubmit(event)">
+                    <input type="hidden" id="invoiceId">
+
+                    <div class="form-group">
+                        <label>关联订单 <span class="required">*</span></label>
+                        <select id="orderId" class="form-control" required onchange="handleOrderSelect()">
+                            <option value="">请选择订单</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>客户名称</label>
+                        <input type="text" id="invoiceCustomer" class="form-control" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>发票金额 <span class="required">*</span></label>
+                        <input type="number" id="invoiceAmount" class="form-control"
+                               step="0.01" min="0.01" required placeholder="请输入金额">
+                    </div>
+
+                    <div class="form-group">
+                        <label>发票类型 <span class="required">*</span></label>
+                        <select id="invoiceType" class="form-control" required>
+                            <option value="vat_common">增值税普通发票</option>
+                            <option value="vat_special">增值税专用发票</option>
+                            <option value="electronic">电子发票</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>开票内容</label>
+                        <input type="text" id="invoiceContent" class="form-control"
+                               placeholder="如：技术服务费">
+                    </div>
+
+                    <div class="form-group">
+                        <label>备注</label>
+                        <textarea id="invoiceNotes" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-default"
+                                onclick="hideInvoiceModal()">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/js/utils.js"></script>
+    <script>
+        let paymentPagination, invoicePagination;
+        let currentPaymentFilters = {};
+        let currentInvoiceFilters = {};
+        let currentApprovalAction = '';
+        let orders = [];
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            checkAuth();
+            await loadStats();
+            await loadOrders();
+
+            paymentPagination = new Pagination(
+                document.getElementById('paymentPaginationContainer'),
+                {
+                    page: 1,
+                    pageSize: 10,
+                    total: 0,
+                    onChange: (page, pageSize) => {
+                        loadPayments(page, pageSize);
+                    }
+                }
+            );
+
+            invoicePagination = new Pagination(
+                document.getElementById('invoicePaginationContainer'),
+                {
+                    page: 1,
+                    pageSize: 10,
+                    total: 0,
+                    onChange: (page, pageSize) => {
+                        loadInvoices(page, pageSize);
+                    }
+                }
+            );
+
+            loadPayments();
+
+            // 监听报表时间范围变化
+            document.getElementById('reportPeriod').addEventListener('change', function() {
+                const customRange = document.getElementById('customDateRange');
+                customRange.style.display = this.value === 'custom' ? 'flex' : 'none';
+            });
+        });
+
+        // 加载统计数据
+        async function loadStats() {
+            try {
+                const response = await apiGet('/finance/stats');
+
+                if (response.code === 200) {
+                    const stats = response.data;
+                    document.getElementById('pendingPayments').textContent = stats.pending_payments || 0;
+                    document.getElementById('monthlyIncome').textContent =
+                        '¥' + formatMoney(stats.monthly_income || 0);
+                    document.getElementById('monthlyExpense').textContent =
+                        '¥' + formatMoney(stats.monthly_expense || 0);
+                    document.getElementById('pendingInvoices').textContent = stats.pending_invoices || 0;
+                }
+            } catch (error) {
+                console.error('加载统计数据失败:', error);
+            }
+        }
+
+        // 加载订单列表（用于发票创建）
+        async function loadOrders() {
+            try {
+                const response = await apiGet('/orders', {
+                    page: 1,
+                    page_size: 1000,
+                    status: 'completed' // 只加载已完成的订单
+                });
+
+                if (response.code === 200) {
+                    orders = response.data.list || [];
+                    updateOrderOptions();
+                }
+            } catch (error) {
+                console.error('加载订单列表失败:', error);
+            }
+        }
+
+        // 更新订单下拉选项
+        function updateOrderOptions() {
+            const orderSelect = document.getElementById('orderId');
+            const options = orders.map(o =>
+                `<option value="${o.id}" data-customer="${o.customer_name}" data-amount="${o.amount}">
+                    ${o.order_no} - ${o.customer_name} - ¥${formatMoney(o.amount)}
+                </option>`
+            ).join('');
+            orderSelect.innerHTML = '<option value="">请选择订单</option>' + options;
+        }
+
+        // 处理订单选择
+        function handleOrderSelect() {
+            const select = document.getElementById('orderId');
+            const selectedOption = select.options[select.selectedIndex];
+
+            if (selectedOption.value) {
+                document.getElementById('invoiceCustomer').value =
+                    selectedOption.getAttribute('data-customer');
+                document.getElementById('invoiceAmount').value =
+                    selectedOption.getAttribute('data-amount');
+            } else {
+                document.getElementById('invoiceCustomer').value = '';
+                document.getElementById('invoiceAmount').value = '';
+            }
+        }
+
+        // 切换Tab
+        function switchTab(tabName) {
+            // 移除所有active类
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // 添加active类
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+
+            // 加载对应数据
+            if (tabName === 'payments' && !paymentPagination.loaded) {
+                loadPayments();
+                paymentPagination.loaded = true;
+            } else if (tabName === 'invoices' && !invoicePagination.loaded) {
+                loadInvoices();
+                invoicePagination.loaded = true;
+            } else if (tabName === 'reports') {
+                loadReport();
+            }
+        }
+
+        // 加载支付列表
+        async function loadPayments(page = 1, pageSize = 10) {
+            try {
+                const params = {
+                    page,
+                    page_size: pageSize,
+                    ...currentPaymentFilters
+                };
+
+                const response = await apiGet('/payments', params);
+
+                if (response.code === 200) {
+                    renderPaymentTable(response.data.list || []);
+                    paymentPagination.setTotal(response.data.total || 0);
+                } else {
+                    showToast(response.message || '加载支付列表失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载支付列表失败:', error);
+                showToast('加载支付列表失败', 'error');
+            }
+        }
+
+        // 渲染支付表格
+        function renderPaymentTable(payments) {
+            const statusMap = {
+                pending: { text: '待审批', type: 'warning' },
+                approved: { text: '已批准', type: 'success' },
+                rejected: { text: '已拒绝', type: 'danger' }
+            };
+
+            if (payments.length === 0) {
+                document.getElementById('paymentTableContainer').innerHTML =
+                    '<div class="empty-state">暂无支付数据</div>';
+                return;
+            }
+
+            const html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>支付编号</th>
+                            <th>客户名称</th>
+                            <th>支付金额</th>
+                            <th>支付方式</th>
+                            <th>状态</th>
+                            <th>申请时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${payments.map(payment => `
+                            <tr>
+                                <td>${payment.payment_no || '-'}</td>
+                                <td>${payment.customer_name || '-'}</td>
+                                <td class="text-right">¥${formatMoney(payment.amount)}</td>
+                                <td>${payment.payment_method || '-'}</td>
+                                <td>
+                                    <span class="badge badge-${statusMap[payment.status]?.type || 'default'}">
+                                        ${statusMap[payment.status]?.text || payment.status}
+                                    </span>
+                                </td>
+                                <td>${formatDateTime(payment.created_at)}</td>
+                                <td>
+                                    ${payment.status === 'pending' ? `
+                                        <button class="btn btn-sm btn-primary"
+                                                onclick="showApprovalModal(${payment.id})">
+                                            审批
+                                        </button>
+                                    ` : `
+                                        <button class="btn btn-sm btn-info"
+                                                onclick="viewPaymentDetail(${payment.id})">
+                                            查看
+                                        </button>
+                                    `}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('paymentTableContainer').innerHTML = html;
+        }
+
+        // 显示审批模态框
+        async function showApprovalModal(id) {
+            try {
+                const response = await apiGet(`/payments/${id}`);
+
+                if (response.code === 200) {
+                    const payment = response.data;
+                    document.getElementById('paymentId').value = payment.id;
+
+                    const detailHtml = `
+                        <div class="detail-container">
+                            <div class="detail-row">
+                                <label>支付编号：</label>
+                                <span>${payment.payment_no || '-'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>客户名称：</label>
+                                <span>${payment.customer_name || '-'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>支付金额：</label>
+                                <span class="text-large text-primary">¥${formatMoney(payment.amount)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>支付方式：</label>
+                                <span>${payment.payment_method || '-'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>申请时间：</label>
+                                <span>${formatDateTime(payment.created_at)}</span>
+                            </div>
+                            ${payment.notes ? `
+                                <div class="detail-row">
+                                    <label>备注：</label>
+                                    <span>${payment.notes}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+
+                    document.getElementById('paymentDetailContent').innerHTML = detailHtml;
+                    document.getElementById('approvalNotes').value = '';
+                    document.getElementById('paymentApprovalModal').classList.add('show');
+                } else {
+                    showToast(response.message || '加载支付详情失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载支付详情失败:', error);
+                showToast('加载支付详情失败', 'error');
+            }
+        }
+
+        // 设置审批操作
+        function setApprovalAction(action) {
+            currentApprovalAction = action;
+        }
+
+        // 处理审批
+        async function handleApproval(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('paymentId').value;
+            const notes = document.getElementById('approvalNotes').value;
+
+            try {
+                const response = await apiPost(`/payments/${id}/approve`, {
+                    action: currentApprovalAction,
+                    notes: notes
+                });
+
+                if (response.code === 200) {
+                    showToast(
+                        currentApprovalAction === 'approve' ? '审批通过' : '审批拒绝',
+                        'success'
+                    );
+                    hidePaymentModal();
+                    loadPayments(paymentPagination.page, paymentPagination.pageSize);
+                    loadStats();
+                } else {
+                    showToast(response.message || '审批失败', 'error');
+                }
+            } catch (error) {
+                console.error('审批失败:', error);
+                showToast('审批失败', 'error');
+            }
+        }
+
+        // 查看支付详情
+        async function viewPaymentDetail(id) {
+            // 简化版，直接调用showApprovalModal，但隐藏审批按钮
+            await showApprovalModal(id);
+            document.getElementById('approvalForm').style.display = 'none';
+        }
+
+        // 支付搜索
+        function handlePaymentSearch(event) {
+            event.preventDefault();
+
+            currentPaymentFilters = {
+                status: document.getElementById('filterPaymentStatus').value,
+                customer_name: document.getElementById('filterPaymentCustomer').value,
+                start_date: document.getElementById('filterPaymentStartDate').value,
+                end_date: document.getElementById('filterPaymentEndDate').value
+            };
+
+            Object.keys(currentPaymentFilters).forEach(key => {
+                if (!currentPaymentFilters[key]) {
+                    delete currentPaymentFilters[key];
+                }
+            });
+
+            paymentPagination.page = 1;
+            loadPayments(1, paymentPagination.pageSize);
+        }
+
+        // 重置支付过滤
+        function resetPaymentFilters() {
+            document.getElementById('filterPaymentStatus').value = '';
+            document.getElementById('filterPaymentCustomer').value = '';
+            document.getElementById('filterPaymentStartDate').value = '';
+            document.getElementById('filterPaymentEndDate').value = '';
+            currentPaymentFilters = {};
+            paymentPagination.page = 1;
+            loadPayments(1, paymentPagination.pageSize);
+        }
+
+        // 加载发票列表
+        async function loadInvoices(page = 1, pageSize = 10) {
+            try {
+                const params = {
+                    page,
+                    page_size: pageSize,
+                    ...currentInvoiceFilters
+                };
+
+                const response = await apiGet('/invoices', params);
+
+                if (response.code === 200) {
+                    renderInvoiceTable(response.data.list || []);
+                    invoicePagination.setTotal(response.data.total || 0);
+                } else {
+                    showToast(response.message || '加载发票列表失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载发票列表失败:', error);
+                showToast('加载发票列表失败', 'error');
+            }
+        }
+
+        // 渲染发票表格
+        function renderInvoiceTable(invoices) {
+            const statusMap = {
+                pending: { text: '待开具', type: 'warning' },
+                issued: { text: '已开具', type: 'success' },
+                sent: { text: '已发送', type: 'info' },
+                cancelled: { text: '已作废', type: 'danger' }
+            };
+
+            const typeMap = {
+                vat_common: '增值税普通发票',
+                vat_special: '增值税专用发票',
+                electronic: '电子发票'
+            };
+
+            if (invoices.length === 0) {
+                document.getElementById('invoiceTableContainer').innerHTML =
+                    '<div class="empty-state">暂无发票数据</div>';
+                return;
+            }
+
+            const html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>发票编号</th>
+                            <th>客户名称</th>
+                            <th>发票类型</th>
+                            <th>发票金额</th>
+                            <th>状态</th>
+                            <th>开具时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${invoices.map(invoice => `
+                            <tr>
+                                <td>${invoice.invoice_no || '-'}</td>
+                                <td>${invoice.customer_name || '-'}</td>
+                                <td>${typeMap[invoice.invoice_type] || invoice.invoice_type}</td>
+                                <td class="text-right">¥${formatMoney(invoice.amount)}</td>
+                                <td>
+                                    <span class="badge badge-${statusMap[invoice.status]?.type || 'default'}">
+                                        ${statusMap[invoice.status]?.text || invoice.status}
+                                    </span>
+                                </td>
+                                <td>${formatDateTime(invoice.issued_at)}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        ${invoice.status === 'pending' ? `
+                                            <button class="btn btn-sm btn-warning"
+                                                    onclick="editInvoice(${invoice.id})">
+                                                编辑
+                                            </button>
+                                            <button class="btn btn-sm btn-success"
+                                                    onclick="issueInvoice(${invoice.id})">
+                                                开具
+                                            </button>
+                                        ` : invoice.status === 'issued' ? `
+                                            <button class="btn btn-sm btn-primary"
+                                                    onclick="sendInvoice(${invoice.id})">
+                                                发送
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('invoiceTableContainer').innerHTML = html;
+        }
+
+        // 显示创建发票模态框
+        function showCreateInvoiceModal() {
+            document.getElementById('invoiceModalTitle').textContent = '创建发票';
+            document.getElementById('invoiceForm').reset();
+            document.getElementById('invoiceId').value = '';
+            document.getElementById('invoiceModal').classList.add('show');
+        }
+
+        // 编辑发票
+        async function editInvoice(id) {
+            try {
+                const response = await apiGet(`/invoices/${id}`);
+
+                if (response.code === 200) {
+                    const invoice = response.data;
+                    document.getElementById('invoiceModalTitle').textContent = '编辑发票';
+                    document.getElementById('invoiceId').value = invoice.id;
+                    document.getElementById('orderId').value = invoice.order_id;
+                    document.getElementById('invoiceCustomer').value = invoice.customer_name;
+                    document.getElementById('invoiceAmount').value = invoice.amount;
+                    document.getElementById('invoiceType').value = invoice.invoice_type;
+                    document.getElementById('invoiceContent').value = invoice.content || '';
+                    document.getElementById('invoiceNotes').value = invoice.notes || '';
+                    document.getElementById('invoiceModal').classList.add('show');
+                } else {
+                    showToast(response.message || '加载发票失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载发票失败:', error);
+                showToast('加载发票失败', 'error');
+            }
+        }
+
+        // 提交发票
+        async function handleInvoiceSubmit(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('invoiceId').value;
+            const data = {
+                order_id: parseInt(document.getElementById('orderId').value),
+                amount: parseFloat(document.getElementById('invoiceAmount').value),
+                invoice_type: document.getElementById('invoiceType').value,
+                content: document.getElementById('invoiceContent').value,
+                notes: document.getElementById('invoiceNotes').value
+            };
+
+            try {
+                let response;
+                if (id) {
+                    response = await apiPut(`/invoices/${id}`, data);
+                } else {
+                    response = await apiPost('/invoices', data);
+                }
+
+                if (response.code === 200) {
+                    showToast(id ? '发票更新成功' : '发票创建成功', 'success');
+                    hideInvoiceModal();
+                    loadInvoices(invoicePagination.page, invoicePagination.pageSize);
+                    loadStats();
+                } else {
+                    showToast(response.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存发票失败:', error);
+                showToast('保存发票失败', 'error');
+            }
+        }
+
+        // 开具发票
+        async function issueInvoice(id) {
+            if (!confirm('确定要开具这张发票吗？')) {
+                return;
+            }
+
+            try {
+                const response = await apiPost(`/invoices/${id}/issue`);
+
+                if (response.code === 200) {
+                    showToast('发票已开具', 'success');
+                    loadInvoices(invoicePagination.page, invoicePagination.pageSize);
+                    loadStats();
+                } else {
+                    showToast(response.message || '开具发票失败', 'error');
+                }
+            } catch (error) {
+                console.error('开具发票失败:', error);
+                showToast('开具发票失败', 'error');
+            }
+        }
+
+        // 发送发票
+        async function sendInvoice(id) {
+            if (!confirm('确定要发送这张发票给客户吗？')) {
+                return;
+            }
+
+            try {
+                const response = await apiPost(`/invoices/${id}/send`);
+
+                if (response.code === 200) {
+                    showToast('发票已发送', 'success');
+                    loadInvoices(invoicePagination.page, invoicePagination.pageSize);
+                } else {
+                    showToast(response.message || '发送发票失败', 'error');
+                }
+            } catch (error) {
+                console.error('发送发票失败:', error);
+                showToast('发送发票失败', 'error');
+            }
+        }
+
+        // 发票搜索
+        function handleInvoiceSearch(event) {
+            event.preventDefault();
+
+            currentInvoiceFilters = {
+                status: document.getElementById('filterInvoiceStatus').value,
+                customer_name: document.getElementById('filterInvoiceCustomer').value,
+                invoice_no: document.getElementById('filterInvoiceNo').value
+            };
+
+            Object.keys(currentInvoiceFilters).forEach(key => {
+                if (!currentInvoiceFilters[key]) {
+                    delete currentInvoiceFilters[key];
+                }
+            });
+
+            invoicePagination.page = 1;
+            loadInvoices(1, invoicePagination.pageSize);
+        }
+
+        // 重置发票过滤
+        function resetInvoiceFilters() {
+            document.getElementById('filterInvoiceStatus').value = '';
+            document.getElementById('filterInvoiceCustomer').value = '';
+            document.getElementById('filterInvoiceNo').value = '';
+            currentInvoiceFilters = {};
+            invoicePagination.page = 1;
+            loadInvoices(1, invoicePagination.pageSize);
+        }
+
+        // 加载财务报表
+        async function loadReport() {
+            const reportType = document.getElementById('reportType').value;
+            const period = document.getElementById('reportPeriod').value;
+
+            const params = {
+                type: reportType,
+                period: period
+            };
+
+            if (period === 'custom') {
+                params.start_date = document.getElementById('reportStartDate').value;
+                params.end_date = document.getElementById('reportEndDate').value;
+
+                if (!params.start_date || !params.end_date) {
+                    showToast('请选择开始和结束日期', 'warning');
+                    return;
+                }
+            }
+
+            try {
+                const response = await apiGet('/finance/reports', params);
+
+                if (response.code === 200) {
+                    renderReport(response.data, reportType);
+                } else {
+                    showToast(response.message || '加载报表失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载报表失败:', error);
+                showToast('加载报表失败', 'error');
+            }
+        }
+
+        // 渲染报表
+        function renderReport(data, reportType) {
+            let html = '';
+
+            if (reportType === 'income') {
+                html = `
+                    <div class="report-summary">
+                        <h3>收入报表</h3>
+                        <div class="report-stats">
+                            <div class="stat-item">
+                                <label>总收入：</label>
+                                <span class="text-success">¥${formatMoney(data.total_income || 0)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <label>充值收入：</label>
+                                <span>¥${formatMoney(data.recharge_income || 0)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <label>消费收入：</label>
+                                <span>¥${formatMoney(data.consumption_income || 0)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (reportType === 'expense') {
+                html = `
+                    <div class="report-summary">
+                        <h3>支出报表</h3>
+                        <div class="report-stats">
+                            <div class="stat-item">
+                                <label>总支出：</label>
+                                <span class="text-danger">¥${formatMoney(data.total_expense || 0)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (reportType === 'balance') {
+                html = `
+                    <div class="report-summary">
+                        <h3>收支平衡表</h3>
+                        <div class="report-stats">
+                            <div class="stat-item">
+                                <label>总收入：</label>
+                                <span class="text-success">¥${formatMoney(data.total_income || 0)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <label>总支出：</label>
+                                <span class="text-danger">¥${formatMoney(data.total_expense || 0)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <label>净利润：</label>
+                                <span class="${(data.net_profit || 0) >= 0 ? 'text-success' : 'text-danger'}">
+                                    ¥${formatMoney(data.net_profit || 0)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('reportContainer').innerHTML = html;
+        }
+
+        // 导出财务报表
+        async function exportFinance() {
+            try {
+                const token = getToken();
+                const response = await fetch(`${API_BASE_URL}/finance/export`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `finance_report_${formatDate(new Date())}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showToast('导出成功', 'success');
+                } else {
+                    showToast('导出失败', 'error');
+                }
+            } catch (error) {
+                console.error('导出失败:', error);
+                showToast('导出失败', 'error');
+            }
+        }
+
+        // 隐藏模态框
+        function hidePaymentModal() {
+            document.getElementById('paymentApprovalModal').classList.remove('show');
+            document.getElementById('approvalForm').style.display = 'block';
+        }
+
+        function hideInvoiceModal() {
+            document.getElementById('invoiceModal').classList.remove('show');
+        }
+
+        // 点击模态框背景关闭
+        window.onclick = function(event) {
+            const paymentModal = document.getElementById('paymentApprovalModal');
+            const invoiceModal = document.getElementById('invoiceModal');
+
+            if (event.target === paymentModal) {
+                hidePaymentModal();
+            }
+            if (event.target === invoiceModal) {
+                hideInvoiceModal();
+            }
+        }
+    </script>
+</body>
+</html>

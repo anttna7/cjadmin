@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色权限管理 - CJAdmin</title>
+    <link rel="stylesheet" href="../static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>角色权限管理</h1>
+            <div class="page-actions">
+                <button class="btn btn-primary" onclick="showCreateRoleModal()">
+                    <span>+ 创建角色</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab导航 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('roles')">角色管理</button>
+            <button class="tab-btn" onclick="switchTab('permissions')">权限管理</button>
+        </div>
+
+        <!-- 角色管理Tab -->
+        <div id="rolesTab" class="tab-content active">
+            <!-- 搜索过滤区 -->
+            <div class="card">
+                <div class="card-body">
+                    <form class="search-form" onsubmit="handleRoleSearch(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>角色名称</label>
+                                <input type="text" id="filterRoleName" class="form-control"
+                                       placeholder="搜索角色">
+                            </div>
+                            <div class="form-group">
+                                <label>状态</label>
+                                <select id="filterRoleStatus" class="form-control">
+                                    <option value="">全部</option>
+                                    <option value="1">启用</option>
+                                    <option value="0">禁用</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">搜索</button>
+                            <button type="button" class="btn btn-default"
+                                    onclick="resetRoleFilters()">重置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 角色列表 -->
+            <div class="card">
+                <div class="card-body">
+                    <div id="roleTableContainer">
+                        <div class="loading">加载中...</div>
+                    </div>
+                    <div id="rolePaginationContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 权限管理Tab -->
+        <div id="permissionsTab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <button class="btn btn-primary" onclick="showCreatePermissionModal()">
+                        + 创建权限
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="permissionTableContainer">
+                        <div class="loading">加载中...</div>
+                    </div>
+                    <div id="permissionPaginationContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑角色模态框 -->
+    <div id="roleModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2 id="roleModalTitle">创建角色</h2>
+                <button class="close" onclick="hideRoleModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="roleForm" onsubmit="handleRoleSubmit(event)">
+                    <input type="hidden" id="roleId">
+
+                    <div class="form-group">
+                        <label>角色名称 <span class="required">*</span></label>
+                        <input type="text" id="roleName" class="form-control"
+                               required placeholder="如：管理员、操作员等">
+                    </div>
+
+                    <div class="form-group">
+                        <label>角色标识 <span class="required">*</span></label>
+                        <input type="text" id="roleCode" class="form-control"
+                               required placeholder="如：admin、operator等（英文）">
+                        <small class="form-text">用于系统内部识别，建议使用英文</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>角色描述</label>
+                        <textarea id="roleDescription" class="form-control" rows="2"
+                                  placeholder="角色说明"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>状态</label>
+                        <div class="form-check">
+                            <input type="checkbox" id="roleEnabled" class="form-check-input" checked>
+                            <label for="roleEnabled" class="form-check-label">启用</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>权限分配</label>
+                        <div id="permissionTree" class="permission-tree">
+                            <div class="loading">加载权限列表...</div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-default"
+                                onclick="hideRoleModal()">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑权限模态框 -->
+    <div id="permissionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="permissionModalTitle">创建权限</h2>
+                <button class="close" onclick="hidePermissionModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="permissionForm" onsubmit="handlePermissionSubmit(event)">
+                    <input type="hidden" id="permissionId">
+
+                    <div class="form-group">
+                        <label>权限名称 <span class="required">*</span></label>
+                        <input type="text" id="permissionName" class="form-control"
+                               required placeholder="如：查看客户、创建订单等">
+                    </div>
+
+                    <div class="form-group">
+                        <label>权限标识 <span class="required">*</span></label>
+                        <input type="text" id="permissionCode" class="form-control"
+                               required placeholder="如：customer:view、order:create等">
+                        <small class="form-text">格式：资源:操作，如 customer:view</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>权限分组</label>
+                        <select id="permissionGroup" class="form-control">
+                            <option value="customer">客户管理</option>
+                            <option value="order">订单管理</option>
+                            <option value="finance">财务管理</option>
+                            <option value="system">系统管理</option>
+                            <option value="other">其他</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>API路径</label>
+                        <input type="text" id="permissionPath" class="form-control"
+                               placeholder="如：/api/customers">
+                        <small class="form-text">对应的API路径（可选）</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>HTTP方法</label>
+                        <select id="permissionMethod" class="form-control">
+                            <option value="">全部</option>
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>权限描述</label>
+                        <textarea id="permissionDescription" class="form-control" rows="2"
+                                  placeholder="权限说明"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-default"
+                                onclick="hidePermissionModal()">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/js/utils.js"></script>
+    <script>
+        let rolePagination, permissionPagination;
+        let currentRoleFilters = {};
+        let allPermissions = [];
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+
+            rolePagination = new Pagination(
+                document.getElementById('rolePaginationContainer'),
+                {
+                    page: 1,
+                    pageSize: 10,
+                    total: 0,
+                    onChange: (page, pageSize) => {
+                        loadRoles(page, pageSize);
+                    }
+                }
+            );
+
+            permissionPagination = new Pagination(
+                document.getElementById('permissionPaginationContainer'),
+                {
+                    page: 1,
+                    pageSize: 10,
+                    total: 0,
+                    onChange: (page, pageSize) => {
+                        loadPermissions(page, pageSize);
+                    }
+                }
+            );
+
+            loadRoles();
+            loadAllPermissions();
+        });
+
+        // 切换Tab
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+
+            if (tabName === 'permissions' && !permissionPagination.loaded) {
+                loadPermissions();
+                permissionPagination.loaded = true;
+            }
+        }
+
+        // 加载所有权限（用于角色分配）
+        async function loadAllPermissions() {
+            try {
+                const response = await apiGet('/permissions', {
+                    page: 1,
+                    page_size: 1000
+                });
+
+                if (response.code === 200) {
+                    allPermissions = response.data.list || [];
+                }
+            } catch (error) {
+                console.error('加载权限列表失败:', error);
+            }
+        }
+
+        // 加载角色列表
+        async function loadRoles(page = 1, pageSize = 10) {
+            try {
+                const params = {
+                    page,
+                    page_size: pageSize,
+                    ...currentRoleFilters
+                };
+
+                const response = await apiGet('/roles', params);
+
+                if (response.code === 200) {
+                    renderRoleTable(response.data.list || []);
+                    rolePagination.setTotal(response.data.total || 0);
+                } else {
+                    showToast(response.message || '加载角色列表失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载角色列表失败:', error);
+                showToast('加载角色列表失败', 'error');
+            }
+        }
+
+        // 渲染角色表格
+        function renderRoleTable(roles) {
+            if (roles.length === 0) {
+                document.getElementById('roleTableContainer').innerHTML =
+                    '<div class="empty-state">暂无角色数据</div>';
+                return;
+            }
+
+            const html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>角色名称</th>
+                            <th>角色标识</th>
+                            <th>权限数量</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${roles.map(role => `
+                            <tr>
+                                <td>${role.id}</td>
+                                <td>${role.role_name}</td>
+                                <td><code>${role.role_code}</code></td>
+                                <td>${role.permission_count || 0}</td>
+                                <td>
+                                    <span class="badge badge-${role.enabled ? 'success' : 'default'}">
+                                        ${role.enabled ? '启用' : '禁用'}
+                                    </span>
+                                </td>
+                                <td>${formatDate(role.created_at)}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-primary"
+                                                onclick="editRole(${role.id})"
+                                                title="编辑">
+                                            编辑
+                                        </button>
+                                        <button class="btn btn-sm btn-${role.enabled ? 'warning' : 'success'}"
+                                                onclick="toggleRoleStatus(${role.id}, ${!role.enabled})"
+                                                title="${role.enabled ? '禁用' : '启用'}">
+                                            ${role.enabled ? '禁用' : '启用'}
+                                        </button>
+                                        <button class="btn btn-sm btn-danger"
+                                                onclick="deleteRole(${role.id})"
+                                                title="删除">
+                                            删除
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('roleTableContainer').innerHTML = html;
+        }
+
+        // 显示创建角色模态框
+        function showCreateRoleModal() {
+            document.getElementById('roleModalTitle').textContent = '创建角色';
+            document.getElementById('roleForm').reset();
+            document.getElementById('roleId').value = '';
+            document.getElementById('roleEnabled').checked = true;
+            renderPermissionTree([]);
+            document.getElementById('roleModal').classList.add('show');
+        }
+
+        // 编辑角色
+        async function editRole(id) {
+            try {
+                const response = await apiGet(`/roles/${id}`);
+
+                if (response.code === 200) {
+                    const role = response.data;
+                    document.getElementById('roleModalTitle').textContent = '编辑角色';
+                    document.getElementById('roleId').value = role.id;
+                    document.getElementById('roleName').value = role.role_name;
+                    document.getElementById('roleCode').value = role.role_code;
+                    document.getElementById('roleDescription').value = role.description || '';
+                    document.getElementById('roleEnabled').checked = role.enabled;
+
+                    // 加载角色权限
+                    const permIds = role.permissions ? role.permissions.map(p => p.id) : [];
+                    renderPermissionTree(permIds);
+
+                    document.getElementById('roleModal').classList.add('show');
+                } else {
+                    showToast(response.message || '加载角色失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载角色失败:', error);
+                showToast('加载角色失败', 'error');
+            }
+        }
+
+        // 渲染权限树
+        function renderPermissionTree(selectedIds) {
+            // 按分组组织权限
+            const groups = {};
+            allPermissions.forEach(perm => {
+                const group = perm.permission_group || 'other';
+                if (!groups[group]) {
+                    groups[group] = [];
+                }
+                groups[group].push(perm);
+            });
+
+            const groupNames = {
+                customer: '客户管理',
+                order: '订单管理',
+                finance: '财务管理',
+                system: '系统管理',
+                other: '其他'
+            };
+
+            let html = '<div class="permission-groups">';
+
+            Object.keys(groups).forEach(groupKey => {
+                html += `
+                    <div class="permission-group">
+                        <div class="group-header">
+                            <label>
+                                <input type="checkbox"
+                                       class="group-checkbox"
+                                       data-group="${groupKey}"
+                                       onchange="toggleGroupPermissions('${groupKey}')">
+                                <strong>${groupNames[groupKey] || groupKey}</strong>
+                            </label>
+                        </div>
+                        <div class="group-permissions">
+                `;
+
+                groups[groupKey].forEach(perm => {
+                    const checked = selectedIds.includes(perm.id) ? 'checked' : '';
+                    html += `
+                        <label class="permission-item">
+                            <input type="checkbox"
+                                   name="permissions"
+                                   value="${perm.id}"
+                                   data-group="${groupKey}"
+                                   ${checked}>
+                            ${perm.permission_name}
+                            <small>(${perm.permission_code})</small>
+                        </label>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+
+            document.getElementById('permissionTree').innerHTML = html;
+
+            // 更新分组复选框状态
+            updateGroupCheckboxes();
+        }
+
+        // 切换分组权限
+        function toggleGroupPermissions(groupKey) {
+            const groupCheckbox = document.querySelector(`.group-checkbox[data-group="${groupKey}"]`);
+            const checkboxes = document.querySelectorAll(`input[name="permissions"][data-group="${groupKey}"]`);
+
+            checkboxes.forEach(cb => {
+                cb.checked = groupCheckbox.checked;
+            });
+        }
+
+        // 更新分组复选框状态
+        function updateGroupCheckboxes() {
+            const groups = document.querySelectorAll('.permission-group');
+
+            groups.forEach(group => {
+                const groupCheckbox = group.querySelector('.group-checkbox');
+                const checkboxes = group.querySelectorAll('input[name="permissions"]');
+                const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+                if (checkedCount === 0) {
+                    groupCheckbox.checked = false;
+                    groupCheckbox.indeterminate = false;
+                } else if (checkedCount === checkboxes.length) {
+                    groupCheckbox.checked = true;
+                    groupCheckbox.indeterminate = false;
+                } else {
+                    groupCheckbox.checked = false;
+                    groupCheckbox.indeterminate = true;
+                }
+            });
+        }
+
+        // 提交角色表单
+        async function handleRoleSubmit(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('roleId').value;
+            const permissionCheckboxes = document.querySelectorAll('input[name="permissions"]:checked');
+            const permissionIds = Array.from(permissionCheckboxes).map(cb => parseInt(cb.value));
+
+            const data = {
+                role_name: document.getElementById('roleName').value,
+                role_code: document.getElementById('roleCode').value,
+                description: document.getElementById('roleDescription').value,
+                enabled: document.getElementById('roleEnabled').checked,
+                permission_ids: permissionIds
+            };
+
+            try {
+                let response;
+                if (id) {
+                    response = await apiPut(`/roles/${id}`, data);
+                } else {
+                    response = await apiPost('/roles', data);
+                }
+
+                if (response.code === 200) {
+                    showToast(id ? '角色更新成功' : '角色创建成功', 'success');
+                    hideRoleModal();
+                    loadRoles(rolePagination.page, rolePagination.pageSize);
+                } else {
+                    showToast(response.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存角色失败:', error);
+                showToast('保存角色失败', 'error');
+            }
+        }
+
+        // 切换角色状态
+        async function toggleRoleStatus(id, enabled) {
+            try {
+                const response = await apiPut(`/roles/${id}`, { enabled });
+
+                if (response.code === 200) {
+                    showToast(enabled ? '角色已启用' : '角色已禁用', 'success');
+                    loadRoles(rolePagination.page, rolePagination.pageSize);
+                } else {
+                    showToast(response.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                console.error('操作失败:', error);
+                showToast('操作失败', 'error');
+            }
+        }
+
+        // 删除角色
+        async function deleteRole(id) {
+            if (!confirm('确定要删除这个角色吗？此操作不可恢复！')) {
+                return;
+            }
+
+            try {
+                const response = await apiDelete(`/roles/${id}`);
+
+                if (response.code === 200) {
+                    showToast('角色已删除', 'success');
+                    loadRoles(rolePagination.page, rolePagination.pageSize);
+                } else {
+                    showToast(response.message || '删除失败', 'error');
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                showToast('删除失败', 'error');
+            }
+        }
+
+        // 角色搜索
+        function handleRoleSearch(event) {
+            event.preventDefault();
+
+            currentRoleFilters = {
+                role_name: document.getElementById('filterRoleName').value,
+                enabled: document.getElementById('filterRoleStatus').value
+            };
+
+            Object.keys(currentRoleFilters).forEach(key => {
+                if (!currentRoleFilters[key]) {
+                    delete currentRoleFilters[key];
+                }
+            });
+
+            rolePagination.page = 1;
+            loadRoles(1, rolePagination.pageSize);
+        }
+
+        // 重置角色过滤
+        function resetRoleFilters() {
+            document.getElementById('filterRoleName').value = '';
+            document.getElementById('filterRoleStatus').value = '';
+            currentRoleFilters = {};
+            rolePagination.page = 1;
+            loadRoles(1, rolePagination.pageSize);
+        }
+
+        // 加载权限列表
+        async function loadPermissions(page = 1, pageSize = 10) {
+            try {
+                const params = {
+                    page,
+                    page_size: pageSize
+                };
+
+                const response = await apiGet('/permissions', params);
+
+                if (response.code === 200) {
+                    renderPermissionTable(response.data.list || []);
+                    permissionPagination.setTotal(response.data.total || 0);
+                } else {
+                    showToast(response.message || '加载权限列表失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载权限列表失败:', error);
+                showToast('加载权限列表失败', 'error');
+            }
+        }
+
+        // 渲染权限表格
+        function renderPermissionTable(permissions) {
+            const groupNames = {
+                customer: '客户管理',
+                order: '订单管理',
+                finance: '财务管理',
+                system: '系统管理',
+                other: '其他'
+            };
+
+            if (permissions.length === 0) {
+                document.getElementById('permissionTableContainer').innerHTML =
+                    '<div class="empty-state">暂无权限数据</div>';
+                return;
+            }
+
+            const html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>权限名称</th>
+                            <th>权限标识</th>
+                            <th>分组</th>
+                            <th>API路径</th>
+                            <th>HTTP方法</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${permissions.map(perm => `
+                            <tr>
+                                <td>${perm.id}</td>
+                                <td>${perm.permission_name}</td>
+                                <td><code>${perm.permission_code}</code></td>
+                                <td>
+                                    <span class="badge badge-info">
+                                        ${groupNames[perm.permission_group] || perm.permission_group}
+                                    </span>
+                                </td>
+                                <td><code>${perm.api_path || '-'}</code></td>
+                                <td>
+                                    ${perm.http_method ?
+                                        `<span class="badge badge-primary">${perm.http_method}</span>` :
+                                        '-'}
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-primary"
+                                                onclick="editPermission(${perm.id})"
+                                                title="编辑">
+                                            编辑
+                                        </button>
+                                        <button class="btn btn-sm btn-danger"
+                                                onclick="deletePermission(${perm.id})"
+                                                title="删除">
+                                            删除
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('permissionTableContainer').innerHTML = html;
+        }
+
+        // 显示创建权限模态框
+        function showCreatePermissionModal() {
+            document.getElementById('permissionModalTitle').textContent = '创建权限';
+            document.getElementById('permissionForm').reset();
+            document.getElementById('permissionId').value = '';
+            document.getElementById('permissionModal').classList.add('show');
+        }
+
+        // 编辑权限
+        async function editPermission(id) {
+            try {
+                const response = await apiGet(`/permissions/${id}`);
+
+                if (response.code === 200) {
+                    const perm = response.data;
+                    document.getElementById('permissionModalTitle').textContent = '编辑权限';
+                    document.getElementById('permissionId').value = perm.id;
+                    document.getElementById('permissionName').value = perm.permission_name;
+                    document.getElementById('permissionCode').value = perm.permission_code;
+                    document.getElementById('permissionGroup').value = perm.permission_group || 'other';
+                    document.getElementById('permissionPath').value = perm.api_path || '';
+                    document.getElementById('permissionMethod').value = perm.http_method || '';
+                    document.getElementById('permissionDescription').value = perm.description || '';
+                    document.getElementById('permissionModal').classList.add('show');
+                } else {
+                    showToast(response.message || '加载权限失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载权限失败:', error);
+                showToast('加载权限失败', 'error');
+            }
+        }
+
+        // 提交权限表单
+        async function handlePermissionSubmit(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('permissionId').value;
+            const data = {
+                permission_name: document.getElementById('permissionName').value,
+                permission_code: document.getElementById('permissionCode').value,
+                permission_group: document.getElementById('permissionGroup').value,
+                api_path: document.getElementById('permissionPath').value,
+                http_method: document.getElementById('permissionMethod').value,
+                description: document.getElementById('permissionDescription').value
+            };
+
+            try {
+                let response;
+                if (id) {
+                    response = await apiPut(`/permissions/${id}`, data);
+                } else {
+                    response = await apiPost('/permissions', data);
+                }
+
+                if (response.code === 200) {
+                    showToast(id ? '权限更新成功' : '权限创建成功', 'success');
+                    hidePermissionModal();
+                    loadPermissions(permissionPagination.page, permissionPagination.pageSize);
+                    loadAllPermissions(); // 重新加载权限列表用于角色分配
+                } else {
+                    showToast(response.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存权限失败:', error);
+                showToast('保存权限失败', 'error');
+            }
+        }
+
+        // 删除权限
+        async function deletePermission(id) {
+            if (!confirm('确定要删除这个权限吗？此操作不可恢复！')) {
+                return;
+            }
+
+            try {
+                const response = await apiDelete(`/permissions/${id}`);
+
+                if (response.code === 200) {
+                    showToast('权限已删除', 'success');
+                    loadPermissions(permissionPagination.page, permissionPagination.pageSize);
+                    loadAllPermissions();
+                } else {
+                    showToast(response.message || '删除失败', 'error');
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                showToast('删除失败', 'error');
+            }
+        }
+
+        // 隐藏模态框
+        function hideRoleModal() {
+            document.getElementById('roleModal').classList.remove('show');
+        }
+
+        function hidePermissionModal() {
+            document.getElementById('permissionModal').classList.remove('show');
+        }
+
+        // 点击模态框背景关闭
+        window.onclick = function(event) {
+            const roleModal = document.getElementById('roleModal');
+            const permissionModal = document.getElementById('permissionModal');
+
+            if (event.target === roleModal) {
+                hideRoleModal();
+            }
+            if (event.target === permissionModal) {
+                hidePermissionModal();
+            }
+        }
+
+        // 监听权限复选框变化，更新分组复选框
+        document.addEventListener('change', function(event) {
+            if (event.target.name === 'permissions') {
+                updateGroupCheckboxes();
+            }
+        });
+    </script>
+
+    <style>
+        .modal-lg {
+            max-width: 800px;
+        }
+
+        .permission-groups {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .permission-group {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .permission-group:last-child {
+            border-bottom: none;
+        }
+
+        .group-header {
+            padding: 12px;
+            background-color: var(--bg-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .group-header label {
+            margin: 0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .group-permissions {
+            padding: 12px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+        }
+
+        .permission-item {
+            display: flex;
+            align-items: center;
+            padding: 4px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .permission-item input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .permission-item small {
+            color: var(--info-color);
+            margin-left: 4px;
+        }
+
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-check-input {
+            margin: 0;
+        }
+
+        .form-check-label {
+            margin: 0;
+            cursor: pointer;
+        }
+    </style>
+</body>
+</html>

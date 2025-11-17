@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单管理 - CJAdmin</title>
+    <link rel="stylesheet" href="../static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>订单管理</h1>
+            <div class="page-actions">
+                <button class="btn btn-primary" onclick="showCreateModal()">
+                    <span>+ 创建订单</span>
+                </button>
+                <button class="btn btn-success" onclick="exportOrders()">
+                    <span>📊 导出</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 搜索过滤区 -->
+        <div class="card">
+            <div class="card-body">
+                <form class="search-form" onsubmit="handleSearch(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>订单类型</label>
+                            <select id="filterOrderType" class="form-control">
+                                <option value="">全部</option>
+                                <option value="recharge">充值</option>
+                                <option value="transfer">转账</option>
+                                <option value="consumption">消费</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>订单状态</label>
+                            <select id="filterStatus" class="form-control">
+                                <option value="">全部</option>
+                                <option value="pending">待处理</option>
+                                <option value="processing">处理中</option>
+                                <option value="completed">已完成</option>
+                                <option value="failed">失败</option>
+                                <option value="cancelled">已取消</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>客户名称</label>
+                            <input type="text" id="filterCustomer" class="form-control" placeholder="搜索客户">
+                        </div>
+                        <div class="form-group">
+                            <label>订单编号</label>
+                            <input type="text" id="filterOrderNo" class="form-control" placeholder="订单编号">
+                        </div>
+                        <div class="form-group">
+                            <label>开始日期</label>
+                            <input type="date" id="filterStartDate" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>结束日期</label>
+                            <input type="date" id="filterEndDate" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">搜索</button>
+                        <button type="button" class="btn btn-default" onclick="resetFilters()">重置</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 订单列表 -->
+        <div class="card">
+            <div class="card-body">
+                <div id="orderTableContainer">
+                    <div class="loading">加载中...</div>
+                </div>
+                <div id="paginationContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑订单模态框 -->
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">创建订单</h2>
+                <button class="close" onclick="hideModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="orderForm" onsubmit="handleSubmit(event)">
+                    <input type="hidden" id="orderId">
+
+                    <div class="form-group">
+                        <label>订单类型 <span class="required">*</span></label>
+                        <select id="orderType" class="form-control" required onchange="handleOrderTypeChange()">
+                            <option value="">请选择</option>
+                            <option value="recharge">充值</option>
+                            <option value="transfer">转账</option>
+                            <option value="consumption">消费</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>客户 <span class="required">*</span></label>
+                        <select id="customerId" class="form-control" required>
+                            <option value="">请选择客户</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>金额 <span class="required">*</span></label>
+                        <input type="number" id="amount" class="form-control"
+                               step="0.01" min="0.01" required placeholder="请输入金额">
+                    </div>
+
+                    <!-- 转账订单专用字段 -->
+                    <div id="transferFields" style="display: none;">
+                        <div class="form-group">
+                            <label>收款客户 <span class="required">*</span></label>
+                            <select id="toCustomerId" class="form-control">
+                                <option value="">请选择收款客户</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 消费订单专用字段 -->
+                    <div id="consumptionFields" style="display: none;">
+                        <div class="form-group">
+                            <label>消费项目</label>
+                            <input type="text" id="consumptionItem" class="form-control"
+                                   placeholder="如：购买服务、订阅套餐等">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>订单状态</label>
+                        <select id="status" class="form-control">
+                            <option value="pending">待处理</option>
+                            <option value="processing">处理中</option>
+                            <option value="completed">已完成</option>
+                            <option value="failed">失败</option>
+                            <option value="cancelled">已取消</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>备注</label>
+                        <textarea id="notes" class="form-control" rows="3"
+                                  placeholder="订单备注信息"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-default" onclick="hideModal()">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 订单详情模态框 -->
+    <div id="orderDetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>订单详情</h2>
+                <button class="close" onclick="hideDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="orderDetailContent">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/js/utils.js"></script>
+    <script>
+        let pagination;
+        let currentFilters = {};
+        let customers = [];
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            checkAuth();
+            await loadCustomers();
+            pagination = new Pagination(
+                document.getElementById('paginationContainer'),
+                {
+                    page: 1,
+                    pageSize: 10,
+                    total: 0,
+                    onChange: (page, pageSize) => {
+                        loadOrders(page, pageSize);
+                    }
+                }
+            );
+            loadOrders();
+        });
+
+        // 加载客户列表（用于下拉选择）
+        async function loadCustomers() {
+            try {
+                const response = await apiGet('/customers', {
+                    page: 1,
+                    page_size: 1000 // 获取所有客户
+                });
+
+                if (response.code === 200) {
+                    customers = response.data.list || [];
+                    updateCustomerOptions();
+                }
+            } catch (error) {
+                console.error('加载客户列表失败:', error);
+            }
+        }
+
+        // 更新客户下拉选项
+        function updateCustomerOptions() {
+            const customerSelect = document.getElementById('customerId');
+            const toCustomerSelect = document.getElementById('toCustomerId');
+
+            const options = customers.map(c =>
+                `<option value="${c.id}">${c.customer_name}</option>`
+            ).join('');
+
+            customerSelect.innerHTML = '<option value="">请选择客户</option>' + options;
+            toCustomerSelect.innerHTML = '<option value="">请选择收款客户</option>' + options;
+        }
+
+        // 加载订单列表
+        async function loadOrders(page = 1, pageSize = 10) {
+            try {
+                const params = {
+                    page,
+                    page_size: pageSize,
+                    ...currentFilters
+                };
+
+                const response = await apiGet('/orders', params);
+
+                if (response.code === 200) {
+                    renderTable(response.data.list || []);
+                    pagination.setTotal(response.data.total || 0);
+                } else {
+                    showToast(response.message || '加载订单失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载订单失败:', error);
+                showToast('加载订单失败', 'error');
+            }
+        }
+
+        // 渲染订单表格
+        function renderTable(orders) {
+            const orderTypeMap = {
+                recharge: { text: '充值', color: 'success' },
+                transfer: { text: '转账', color: 'primary' },
+                consumption: { text: '消费', color: 'warning' }
+            };
+
+            const statusMap = {
+                pending: { text: '待处理', type: 'warning' },
+                processing: { text: '处理中', type: 'info' },
+                completed: { text: '已完成', type: 'success' },
+                failed: { text: '失败', type: 'danger' },
+                cancelled: { text: '已取消', type: 'default' }
+            };
+
+            if (orders.length === 0) {
+                document.getElementById('orderTableContainer').innerHTML =
+                    '<div class="empty-state">暂无订单数据</div>';
+                return;
+            }
+
+            const html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>订单编号</th>
+                            <th>订单类型</th>
+                            <th>客户名称</th>
+                            <th>金额</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${orders.map(order => `
+                            <tr>
+                                <td>
+                                    <a href="#" onclick="viewDetail(${order.id}); return false;"
+                                       class="link">${order.order_no || '-'}</a>
+                                </td>
+                                <td>
+                                    <span class="badge badge-${orderTypeMap[order.order_type]?.color || 'default'}">
+                                        ${orderTypeMap[order.order_type]?.text || order.order_type}
+                                    </span>
+                                </td>
+                                <td>${order.customer_name || '-'}</td>
+                                <td class="text-right">¥${formatMoney(order.amount)}</td>
+                                <td>
+                                    <span class="badge badge-${statusMap[order.status]?.type || 'default'}">
+                                        ${statusMap[order.status]?.text || order.status}
+                                    </span>
+                                </td>
+                                <td>${formatDate(order.created_at)}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-primary"
+                                                onclick="viewDetail(${order.id})"
+                                                title="查看详情">
+                                            详情
+                                        </button>
+                                        ${order.status === 'pending' ? `
+                                            <button class="btn btn-sm btn-warning"
+                                                    onclick="editOrder(${order.id})"
+                                                    title="编辑">
+                                                编辑
+                                            </button>
+                                            <button class="btn btn-sm btn-danger"
+                                                    onclick="cancelOrder(${order.id})"
+                                                    title="取消订单">
+                                                取消
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('orderTableContainer').innerHTML = html;
+        }
+
+        // 处理搜索
+        function handleSearch(event) {
+            event.preventDefault();
+
+            currentFilters = {
+                order_type: document.getElementById('filterOrderType').value,
+                status: document.getElementById('filterStatus').value,
+                customer_name: document.getElementById('filterCustomer').value,
+                order_no: document.getElementById('filterOrderNo').value,
+                start_date: document.getElementById('filterStartDate').value,
+                end_date: document.getElementById('filterEndDate').value
+            };
+
+            // 移除空值
+            Object.keys(currentFilters).forEach(key => {
+                if (!currentFilters[key]) {
+                    delete currentFilters[key];
+                }
+            });
+
+            pagination.page = 1;
+            loadOrders(1, pagination.pageSize);
+        }
+
+        // 重置过滤条件
+        function resetFilters() {
+            document.getElementById('filterOrderType').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterCustomer').value = '';
+            document.getElementById('filterOrderNo').value = '';
+            document.getElementById('filterStartDate').value = '';
+            document.getElementById('filterEndDate').value = '';
+            currentFilters = {};
+            pagination.page = 1;
+            loadOrders(1, pagination.pageSize);
+        }
+
+        // 显示创建模态框
+        function showCreateModal() {
+            document.getElementById('modalTitle').textContent = '创建订单';
+            document.getElementById('orderForm').reset();
+            document.getElementById('orderId').value = '';
+            document.getElementById('status').value = 'pending';
+            document.getElementById('transferFields').style.display = 'none';
+            document.getElementById('consumptionFields').style.display = 'none';
+            document.getElementById('orderModal').classList.add('show');
+        }
+
+        // 订单类型变更处理
+        function handleOrderTypeChange() {
+            const orderType = document.getElementById('orderType').value;
+            const transferFields = document.getElementById('transferFields');
+            const consumptionFields = document.getElementById('consumptionFields');
+            const toCustomerSelect = document.getElementById('toCustomerId');
+            const consumptionItem = document.getElementById('consumptionItem');
+
+            // 隐藏所有特殊字段
+            transferFields.style.display = 'none';
+            consumptionFields.style.display = 'none';
+            toCustomerSelect.removeAttribute('required');
+            consumptionItem.removeAttribute('required');
+
+            // 根据订单类型显示对应字段
+            if (orderType === 'transfer') {
+                transferFields.style.display = 'block';
+                toCustomerSelect.setAttribute('required', 'required');
+            } else if (orderType === 'consumption') {
+                consumptionFields.style.display = 'block';
+            }
+        }
+
+        // 编辑订单
+        async function editOrder(id) {
+            try {
+                const response = await apiGet(`/orders/${id}`);
+
+                if (response.code === 200) {
+                    const order = response.data;
+                    document.getElementById('modalTitle').textContent = '编辑订单';
+                    document.getElementById('orderId').value = order.id;
+                    document.getElementById('orderType').value = order.order_type;
+                    document.getElementById('customerId').value = order.customer_id;
+                    document.getElementById('amount').value = order.amount;
+                    document.getElementById('status').value = order.status;
+                    document.getElementById('notes').value = order.notes || '';
+
+                    handleOrderTypeChange();
+
+                    if (order.order_type === 'transfer' && order.to_customer_id) {
+                        document.getElementById('toCustomerId').value = order.to_customer_id;
+                    }
+                    if (order.order_type === 'consumption' && order.consumption_item) {
+                        document.getElementById('consumptionItem').value = order.consumption_item;
+                    }
+
+                    document.getElementById('orderModal').classList.add('show');
+                } else {
+                    showToast(response.message || '加载订单失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载订单失败:', error);
+                showToast('加载订单失败', 'error');
+            }
+        }
+
+        // 提交表单
+        async function handleSubmit(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('orderId').value;
+            const orderType = document.getElementById('orderType').value;
+
+            const data = {
+                order_type: orderType,
+                customer_id: parseInt(document.getElementById('customerId').value),
+                amount: parseFloat(document.getElementById('amount').value),
+                status: document.getElementById('status').value,
+                notes: document.getElementById('notes').value
+            };
+
+            // 添加订单类型特定字段
+            if (orderType === 'transfer') {
+                data.to_customer_id = parseInt(document.getElementById('toCustomerId').value);
+            } else if (orderType === 'consumption') {
+                data.consumption_item = document.getElementById('consumptionItem').value;
+            }
+
+            try {
+                let response;
+                if (id) {
+                    response = await apiPut(`/orders/${id}`, data);
+                } else {
+                    response = await apiPost('/orders', data);
+                }
+
+                if (response.code === 200) {
+                    showToast(id ? '订单更新成功' : '订单创建成功', 'success');
+                    hideModal();
+                    loadOrders(pagination.page, pagination.pageSize);
+                } else {
+                    showToast(response.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存订单失败:', error);
+                showToast('保存订单失败', 'error');
+            }
+        }
+
+        // 查看详情
+        async function viewDetail(id) {
+            try {
+                const response = await apiGet(`/orders/${id}`);
+
+                if (response.code === 200) {
+                    const order = response.data;
+                    renderOrderDetail(order);
+                    document.getElementById('orderDetailModal').classList.add('show');
+                } else {
+                    showToast(response.message || '加载详情失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载详情失败:', error);
+                showToast('加载详情失败', 'error');
+            }
+        }
+
+        // 渲染订单详情
+        function renderOrderDetail(order) {
+            const orderTypeMap = {
+                recharge: '充值',
+                transfer: '转账',
+                consumption: '消费'
+            };
+
+            const statusMap = {
+                pending: '待处理',
+                processing: '处理中',
+                completed: '已完成',
+                failed: '失败',
+                cancelled: '已取消'
+            };
+
+            const html = `
+                <div class="detail-container">
+                    <div class="detail-row">
+                        <label>订单编号：</label>
+                        <span>${order.order_no || '-'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>订单类型：</label>
+                        <span>${orderTypeMap[order.order_type] || order.order_type}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>客户名称：</label>
+                        <span>${order.customer_name || '-'}</span>
+                    </div>
+                    ${order.order_type === 'transfer' && order.to_customer_name ? `
+                        <div class="detail-row">
+                            <label>收款客户：</label>
+                            <span>${order.to_customer_name}</span>
+                        </div>
+                    ` : ''}
+                    ${order.order_type === 'consumption' && order.consumption_item ? `
+                        <div class="detail-row">
+                            <label>消费项目：</label>
+                            <span>${order.consumption_item}</span>
+                        </div>
+                    ` : ''}
+                    <div class="detail-row">
+                        <label>金额：</label>
+                        <span class="text-large text-primary">¥${formatMoney(order.amount)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>订单状态：</label>
+                        <span>${statusMap[order.status] || order.status}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>创建时间：</label>
+                        <span>${formatDateTime(order.created_at)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>更新时间：</label>
+                        <span>${formatDateTime(order.updated_at)}</span>
+                    </div>
+                    ${order.notes ? `
+                        <div class="detail-row">
+                            <label>备注：</label>
+                            <span>${order.notes}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            document.getElementById('orderDetailContent').innerHTML = html;
+        }
+
+        // 取消订单
+        async function cancelOrder(id) {
+            if (!confirm('确定要取消这个订单吗？')) {
+                return;
+            }
+
+            try {
+                const response = await apiPut(`/orders/${id}`, { status: 'cancelled' });
+
+                if (response.code === 200) {
+                    showToast('订单已取消', 'success');
+                    loadOrders(pagination.page, pagination.pageSize);
+                } else {
+                    showToast(response.message || '取消订单失败', 'error');
+                }
+            } catch (error) {
+                console.error('取消订单失败:', error);
+                showToast('取消订单失败', 'error');
+            }
+        }
+
+        // 导出订单
+        async function exportOrders() {
+            try {
+                const params = new URLSearchParams(currentFilters);
+                const token = getToken();
+
+                const response = await fetch(`${API_BASE_URL}/orders/export?${params}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `orders_export_${formatDate(new Date())}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showToast('导出成功', 'success');
+                } else {
+                    showToast('导出失败', 'error');
+                }
+            } catch (error) {
+                console.error('导出失败:', error);
+                showToast('导出失败', 'error');
+            }
+        }
+
+        // 隐藏模态框
+        function hideModal() {
+            document.getElementById('orderModal').classList.remove('show');
+        }
+
+        // 隐藏详情模态框
+        function hideDetailModal() {
+            document.getElementById('orderDetailModal').classList.remove('show');
+        }
+
+        // 点击模态框背景关闭
+        window.onclick = function(event) {
+            const orderModal = document.getElementById('orderModal');
+            const detailModal = document.getElementById('orderDetailModal');
+
+            if (event.target === orderModal) {
+                hideModal();
+            }
+            if (event.target === detailModal) {
+                hideDetailModal();
+            }
+        }
+    </script>
+</body>
+</html>
