@@ -287,6 +287,51 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 				importLogs.GET("/statistics", middleware.RequirePermission("system.read"), systemHandler.GetImportStatistics)
 			}
 
+			// 收款账户管理（第19阶段）
+			paymentAccountHandler := handler.NewPaymentAccountHandler(database.GetDB())
+			paymentAccounts := authorized.Group("/payment-accounts")
+			paymentAccounts.Use(middleware.TenantMiddleware())
+			{
+				paymentAccounts.POST("", middleware.RequirePermission("finance.create"), paymentAccountHandler.CreatePaymentAccount)
+				paymentAccounts.GET("", middleware.RequirePermission("finance.read"), paymentAccountHandler.GetPaymentAccounts)
+				paymentAccounts.GET("/:id", middleware.RequirePermission("finance.read"), paymentAccountHandler.GetPaymentAccount)
+				paymentAccounts.PUT("/:id", middleware.RequirePermission("finance.update"), paymentAccountHandler.UpdatePaymentAccount)
+				paymentAccounts.DELETE("/:id", middleware.RequirePermission("finance.delete"), paymentAccountHandler.DeletePaymentAccount)
+				paymentAccounts.PUT("/:id/status", middleware.RequirePermission("finance.update"), paymentAccountHandler.UpdatePaymentAccountStatus)
+				paymentAccounts.GET("/statistics", middleware.RequirePermission("finance.read"), paymentAccountHandler.GetPaymentAccountStatistics)
+				paymentAccounts.POST("/select", middleware.RequirePermission("order.create"), paymentAccountHandler.SelectPaymentAccount)
+			}
+
+			// 返点管理（第19阶段）
+			rebateHandler := handler.NewRebateHandler(database.GetDB())
+			rebates := authorized.Group("/rebates")
+			rebates.Use(middleware.TenantMiddleware())
+			{
+				rebates.POST("/calculate", middleware.RequirePermission("customer.read"), rebateHandler.CalculateRebate)
+				rebates.GET("/customer/:customer_id", middleware.RequirePermission("customer.read"), rebateHandler.GetCustomerRebateConfig)
+				rebates.PUT("/customer/:customer_id", middleware.RequirePermission("customer.update"), rebateHandler.UpdateCustomerRebateConfig)
+				rebates.POST("/batch-update", middleware.RequirePermission("customer.update"), rebateHandler.BatchUpdateRebateConfig)
+				rebates.POST("/preview", middleware.RequirePermission("customer.read"), rebateHandler.PreviewRebate)
+				rebates.GET("/statistics", middleware.RequirePermission("finance.read"), rebateHandler.GetRebateStatistics)
+			}
+
+			// 授信管理（第19阶段）
+			creditHandler := handler.NewCreditHandler(database.GetDB())
+			credits := authorized.Group("/credits")
+			credits.Use(middleware.TenantMiddleware())
+			{
+				credits.POST("/apply", middleware.RequirePermission("customer.update"), creditHandler.ApplyCredit)
+				credits.PUT("/:id/approve", middleware.RequirePermission("credit.approve"), creditHandler.ApproveCredit)
+				credits.PUT("/:id/cancel", middleware.RequirePermission("customer.update"), creditHandler.CancelCredit)
+				credits.POST("/adjust", middleware.RequirePermission("credit.approve"), creditHandler.AdjustCredit)
+				credits.POST("/repay", middleware.RequirePermission("finance.create"), creditHandler.RepayCredit)
+				credits.GET("", middleware.RequirePermission("customer.read"), creditHandler.GetCreditRecords)
+				credits.GET("/:id", middleware.RequirePermission("customer.read"), creditHandler.GetCreditRecord)
+				credits.GET("/customer/:customer_id/info", middleware.RequirePermission("customer.read"), creditHandler.GetCustomerCreditInfo)
+				credits.GET("/approvers", middleware.RequirePermission("customer.read"), creditHandler.GetApprovers)
+				credits.GET("/statistics", middleware.RequirePermission("finance.read"), creditHandler.GetCreditStatistics)
+			}
+
 			// 文件上传管理
 			uploadHandler := handler.NewUploadHandler()
 			files := authorized.Group("/files")
