@@ -1,4 +1,4 @@
-.PHONY: help build run init-db init-admin clean test
+.PHONY: help build run init-db init-admin clean test test-coverage test-race test-bench
 
 help: ## 显示帮助信息
 	@echo "可用命令："
@@ -31,6 +31,20 @@ clean: ## 清理编译文件
 test: ## 运行测试
 	@echo "运行测试..."
 	@go test -v ./...
+
+test-coverage: ## 运行测试并生成覆盖率报告
+	@echo "运行测试并生成覆盖率报告..."
+	@go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+	@go tool cover -html=coverage.out -o coverage.html
+	@echo "覆盖率报告已生成: coverage.html"
+
+test-race: ## 运行竞态检测
+	@echo "运行竞态检测..."
+	@go test -race ./...
+
+test-bench: ## 运行性能基准测试
+	@echo "运行性能基准测试..."
+	@go test -bench=. -benchmem ./...
 
 deps: ## 下载依赖
 	@echo "下载依赖..."
