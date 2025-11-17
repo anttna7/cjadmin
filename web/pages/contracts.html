@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合同管理 - CJAdmin</title>
+    <link rel="stylesheet" href="../static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>合同管理</h1>
+            <div class="page-actions">
+                <button class="btn btn-primary" onclick="showCreateModal()">
+                    <span>+ 创建合同</span>
+                </button>
+                <button class="btn btn-success" onclick="exportContracts()">
+                    <span>📊 导出</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 搜索过滤区 -->
+        <div class="card">
+            <div class="card-body">
+                <form class="search-form" onsubmit="handleSearch(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>合同编号</label>
+                            <input type="text" id="filterContractNo" class="form-control"
+                                   placeholder="搜索合同编号">
+                        </div>
+                        <div class="form-group">
+                            <label>客户名称</label>
+                            <input type="text" id="filterCustomer" class="form-control"
+                                   placeholder="搜索客户">
+                        </div>
+                        <div class="form-group">
+                            <label>合同状态</label>
+                            <select id="filterStatus" class="form-control">
+                                <option value="">全部</option>
+                                <option value="draft">草稿</option>
+                                <option value="effective">生效</option>
+                                <option value="expired">过期</option>
+                                <option value="terminated">作废</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>开始日期</label>
+                            <input type="date" id="filterStartDate" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>结束日期</label>
+                            <input type="date" id="filterEndDate" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">搜索</button>
+                        <button type="button" class="btn btn-default" onclick="resetFilters()">重置</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 合同列表 -->
+        <div class="card">
+            <div class="card-body">
+                <div id="contractTableContainer">
+                    <div class="loading">加载中...</div>
+                </div>
+                <div id="paginationContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑合同模态框 -->
+    <div id="contractModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2 id="modalTitle">创建合同</h2>
+                <button class="close" onclick="hideModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="contractForm" onsubmit="handleSubmit(event)">
+                    <input type="hidden" id="contractId">
+
+                    <div class="form-group">
+                        <label>合同编号 <span class="required">*</span></label>
+                        <input type="text" id="contractNo" class="form-control"
+                               required placeholder="如：HT2025001">
+                    </div>
+
+                    <div class="form-group">
+                        <label>客户 <span class="required">*</span></label>
+                        <select id="customerId" class="form-control" required>
+                            <option value="">请选择客户</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>合同名称 <span class="required">*</span></label>
+                        <input type="text" id="contractName" class="form-control"
+                               required placeholder="请输入合同名称">
+                    </div>
+
+                    <div class="form-group">
+                        <label>合同金额 <span class="required">*</span></label>
+                        <input type="number" id="amount" class="form-control"
+                               step="0.01" min="0" required placeholder="请输入合同金额">
+                    </div>
+
+                    <div class="form-group">
+                        <label>开始日期 <span class="required">*</span></label>
+                        <input type="date" id="startDate" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>结束日期 <span class="required">*</span></label>
+                        <input type="date" id="endDate" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>签署日期</label>
+                        <input type="date" id="signedDate" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>合同状态</label>
+                        <select id="status" class="form-control">
+                            <option value="draft">草稿</option>
+                            <option value="effective">生效</option>
+                            <option value="expired">过期</option>
+                            <option value="terminated">作废</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>合同内容</label>
+                        <textarea id="content" class="form-control" rows="4"
+                                  placeholder="合同主要内容说明"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>备注</label>
+                        <textarea id="notes" class="form-control" rows="2"
+                                  placeholder="合同备注信息"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-default" onclick="hideModal()">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 合同详情模态框 -->
+    <div id="contractDetailModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2>合同详情</h2>
+                <button class="close" onclick="hideDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="contractDetailContent">
+                    <div class="loading">加载中...</div>
+                </div>
+                <div id="contractFiles" class="mt-3">
+                    <h4>合同文件</h4>
+                    <div id="fileList"></div>
+                    <div class="mt-2">
+                        <input type="file" id="fileUpload" style="display:none" onchange="handleFileUpload(event)">
+                        <button class="btn btn-sm btn-primary" onclick="document.getElementById('fileUpload').click()">
+                            上传文件
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/js/utils.js"></script>
+    <script>
+        let pagination;
+        let currentFilters = {};
+        let customers = [];
+        let currentContractId = null;
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            checkAuth();
+            await loadCustomers();
+
+            pagination = new Pagination(
+                document.getElementById('paginationContainer'),
+                {
+                    page: 1,
+                    pageSize: 10,
+                    total: 0,
+                    onChange: (page, pageSize) => {
+                        loadContracts(page, pageSize);
+                    }
+                }
+            );
+
+            loadContracts();
+        });
+
+        // 加载客户列表
+        async function loadCustomers() {
+            try {
+                const response = await apiGet('/customers', {
+                    page: 1,
+                    page_size: 1000
+                });
+
+                if (response.code === 200) {
+                    customers = response.data.list || [];
+                    updateCustomerOptions();
+                }
+            } catch (error) {
+                console.error('加载客户列表失败:', error);
+            }
+        }
+
+        // 更新客户下拉选项
+        function updateCustomerOptions() {
+            const customerSelect = document.getElementById('customerId');
+            const options = customers.map(c =>
+                `<option value="${c.id}">${c.customer_name}</option>`
+            ).join('');
+            customerSelect.innerHTML = '<option value="">请选择客户</option>' + options;
+        }
+
+        // 加载合同列表
+        async function loadContracts(page = 1, pageSize = 10) {
+            try {
+                const params = {
+                    page,
+                    page_size: pageSize,
+                    ...currentFilters
+                };
+
+                const response = await apiGet('/contracts', params);
+
+                if (response.code === 200) {
+                    renderTable(response.data.list || []);
+                    pagination.setTotal(response.data.total || 0);
+                } else {
+                    showToast(response.message || '加载合同列表失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载合同列表失败:', error);
+                showToast('加载合同列表失败', 'error');
+            }
+        }
+
+        // 渲染合同表格
+        function renderTable(contracts) {
+            const statusMap = {
+                draft: { text: '草稿', type: 'default' },
+                effective: { text: '生效', type: 'success' },
+                expired: { text: '过期', type: 'warning' },
+                terminated: { text: '作废', type: 'danger' }
+            };
+
+            if (contracts.length === 0) {
+                document.getElementById('contractTableContainer').innerHTML =
+                    '<div class="empty-state">暂无合同数据</div>';
+                return;
+            }
+
+            const html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>合同编号</th>
+                            <th>合同名称</th>
+                            <th>客户名称</th>
+                            <th>合同金额</th>
+                            <th>开始日期</th>
+                            <th>结束日期</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${contracts.map(contract => `
+                            <tr>
+                                <td>
+                                    <a href="#" onclick="viewDetail(${contract.id}); return false;"
+                                       class="link">${contract.contract_no}</a>
+                                </td>
+                                <td>${contract.contract_name || '-'}</td>
+                                <td>${contract.customer_name || '-'}</td>
+                                <td class="text-right">¥${formatMoney(contract.amount)}</td>
+                                <td>${formatDate(contract.start_date)}</td>
+                                <td>${formatDate(contract.end_date)}</td>
+                                <td>
+                                    <span class="badge badge-${statusMap[contract.status]?.type || 'default'}">
+                                        ${statusMap[contract.status]?.text || contract.status}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-primary"
+                                                onclick="viewDetail(${contract.id})"
+                                                title="查看详情">
+                                            详情
+                                        </button>
+                                        ${contract.status === 'draft' ? `
+                                            <button class="btn btn-sm btn-warning"
+                                                    onclick="editContract(${contract.id})"
+                                                    title="编辑">
+                                                编辑
+                                            </button>
+                                            <button class="btn btn-sm btn-success"
+                                                    onclick="signContract(${contract.id})"
+                                                    title="签署">
+                                                签署
+                                            </button>
+                                        ` : ''}
+                                        ${contract.status === 'effective' ? `
+                                            <button class="btn btn-sm btn-danger"
+                                                    onclick="terminateContract(${contract.id})"
+                                                    title="作废">
+                                                作废
+                                            </button>
+                                        ` : ''}
+                                        ${contract.status === 'draft' ? `
+                                            <button class="btn btn-sm btn-danger"
+                                                    onclick="deleteContract(${contract.id})"
+                                                    title="删除">
+                                                删除
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('contractTableContainer').innerHTML = html;
+        }
+
+        // 处理搜索
+        function handleSearch(event) {
+            event.preventDefault();
+
+            currentFilters = {
+                contract_no: document.getElementById('filterContractNo').value,
+                customer_name: document.getElementById('filterCustomer').value,
+                status: document.getElementById('filterStatus').value,
+                start_date: document.getElementById('filterStartDate').value,
+                end_date: document.getElementById('filterEndDate').value
+            };
+
+            Object.keys(currentFilters).forEach(key => {
+                if (!currentFilters[key]) {
+                    delete currentFilters[key];
+                }
+            });
+
+            pagination.page = 1;
+            loadContracts(1, pagination.pageSize);
+        }
+
+        // 重置过滤条件
+        function resetFilters() {
+            document.getElementById('filterContractNo').value = '';
+            document.getElementById('filterCustomer').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterStartDate').value = '';
+            document.getElementById('filterEndDate').value = '';
+            currentFilters = {};
+            pagination.page = 1;
+            loadContracts(1, pagination.pageSize);
+        }
+
+        // 显示创建模态框
+        function showCreateModal() {
+            document.getElementById('modalTitle').textContent = '创建合同';
+            document.getElementById('contractForm').reset();
+            document.getElementById('contractId').value = '';
+            document.getElementById('status').value = 'draft';
+            document.getElementById('contractModal').classList.add('show');
+        }
+
+        // 编辑合同
+        async function editContract(id) {
+            try {
+                const response = await apiGet(`/contracts/${id}`);
+
+                if (response.code === 200) {
+                    const contract = response.data;
+                    document.getElementById('modalTitle').textContent = '编辑合同';
+                    document.getElementById('contractId').value = contract.id;
+                    document.getElementById('contractNo').value = contract.contract_no;
+                    document.getElementById('customerId').value = contract.customer_id;
+                    document.getElementById('contractName').value = contract.contract_name;
+                    document.getElementById('amount').value = contract.amount;
+                    document.getElementById('startDate').value = contract.start_date;
+                    document.getElementById('endDate').value = contract.end_date;
+                    document.getElementById('signedDate').value = contract.signed_date || '';
+                    document.getElementById('status').value = contract.status;
+                    document.getElementById('content').value = contract.content || '';
+                    document.getElementById('notes').value = contract.notes || '';
+                    document.getElementById('contractModal').classList.add('show');
+                } else {
+                    showToast(response.message || '加载合同失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载合同失败:', error);
+                showToast('加载合同失败', 'error');
+            }
+        }
+
+        // 提交表单
+        async function handleSubmit(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('contractId').value;
+            const data = {
+                contract_no: document.getElementById('contractNo').value,
+                customer_id: parseInt(document.getElementById('customerId').value),
+                contract_name: document.getElementById('contractName').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                start_date: document.getElementById('startDate').value,
+                end_date: document.getElementById('endDate').value,
+                signed_date: document.getElementById('signedDate').value || null,
+                status: document.getElementById('status').value,
+                content: document.getElementById('content').value,
+                notes: document.getElementById('notes').value
+            };
+
+            try {
+                let response;
+                if (id) {
+                    response = await apiPut(`/contracts/${id}`, data);
+                } else {
+                    response = await apiPost('/contracts', data);
+                }
+
+                if (response.code === 200) {
+                    showToast(id ? '合同更新成功' : '合同创建成功', 'success');
+                    hideModal();
+                    loadContracts(pagination.page, pagination.pageSize);
+                } else {
+                    showToast(response.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存合同失败:', error);
+                showToast('保存合同失败', 'error');
+            }
+        }
+
+        // 查看详情
+        async function viewDetail(id) {
+            currentContractId = id;
+            try {
+                const response = await apiGet(`/contracts/${id}`);
+
+                if (response.code === 200) {
+                    const contract = response.data;
+                    renderContractDetail(contract);
+                    await loadContractFiles(id);
+                    document.getElementById('contractDetailModal').classList.add('show');
+                } else {
+                    showToast(response.message || '加载详情失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载详情失败:', error);
+                showToast('加载详情失败', 'error');
+            }
+        }
+
+        // 渲染合同详情
+        function renderContractDetail(contract) {
+            const statusMap = {
+                draft: '草稿',
+                effective: '生效',
+                expired: '过期',
+                terminated: '作废'
+            };
+
+            const html = `
+                <div class="detail-container">
+                    <div class="detail-row">
+                        <label>合同编号：</label>
+                        <span>${contract.contract_no}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>合同名称：</label>
+                        <span>${contract.contract_name}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>客户名称：</label>
+                        <span>${contract.customer_name || '-'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>合同金额：</label>
+                        <span class="text-large text-primary">¥${formatMoney(contract.amount)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>合同期限：</label>
+                        <span>${formatDate(contract.start_date)} 至 ${formatDate(contract.end_date)}</span>
+                    </div>
+                    ${contract.signed_date ? `
+                        <div class="detail-row">
+                            <label>签署日期：</label>
+                            <span>${formatDate(contract.signed_date)}</span>
+                        </div>
+                    ` : ''}
+                    <div class="detail-row">
+                        <label>合同状态：</label>
+                        <span>${statusMap[contract.status] || contract.status}</span>
+                    </div>
+                    ${contract.content ? `
+                        <div class="detail-row">
+                            <label>合同内容：</label>
+                            <span>${contract.content}</span>
+                        </div>
+                    ` : ''}
+                    ${contract.notes ? `
+                        <div class="detail-row">
+                            <label>备注：</label>
+                            <span>${contract.notes}</span>
+                        </div>
+                    ` : ''}
+                    <div class="detail-row">
+                        <label>创建时间：</label>
+                        <span>${formatDateTime(contract.created_at)}</span>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('contractDetailContent').innerHTML = html;
+        }
+
+        // 加载合同文件
+        async function loadContractFiles(contractId) {
+            try {
+                const response = await apiGet(`/files`, {
+                    resource_type: 'contract',
+                    resource_id: contractId
+                });
+
+                if (response.code === 200) {
+                    renderFileList(response.data.list || []);
+                }
+            } catch (error) {
+                console.error('加载文件列表失败:', error);
+            }
+        }
+
+        // 渲染文件列表
+        function renderFileList(files) {
+            const container = document.getElementById('fileList');
+
+            if (files.length === 0) {
+                container.innerHTML = '<p class="text-muted">暂无上传文件</p>';
+                return;
+            }
+
+            const html = files.map(file => `
+                <div class="file-item">
+                    <span class="file-name">📄 ${file.original_name}</span>
+                    <span class="file-size">(${formatFileSize(file.file_size)})</span>
+                    <button class="btn btn-sm btn-primary" onclick="downloadFile(${file.id})">下载</button>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        // 文件上传
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('resource_type', 'contract');
+            formData.append('resource_id', currentContractId);
+
+            try {
+                const token = getToken();
+                const response = await fetch(`${API_BASE_URL}/files/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.code === 200) {
+                    showToast('文件上传成功', 'success');
+                    await loadContractFiles(currentContractId);
+                } else {
+                    showToast(data.message || '上传失败', 'error');
+                }
+            } catch (error) {
+                console.error('上传失败:', error);
+                showToast('上传失败', 'error');
+            }
+
+            event.target.value = '';
+        }
+
+        // 下载文件
+        async function downloadFile(fileId) {
+            try {
+                const token = getToken();
+                window.open(`${API_BASE_URL}/files/${fileId}/download?token=${token}`, '_blank');
+            } catch (error) {
+                console.error('下载失败:', error);
+                showToast('下载失败', 'error');
+            }
+        }
+
+        // 签署合同
+        async function signContract(id) {
+            if (!confirm('确定要签署这份合同吗？签署后合同将生效。')) {
+                return;
+            }
+
+            try {
+                const response = await apiPost(`/contracts/${id}/sign`);
+
+                if (response.code === 200) {
+                    showToast('合同已签署', 'success');
+                    loadContracts(pagination.page, pagination.pageSize);
+                } else {
+                    showToast(response.message || '签署合同失败', 'error');
+                }
+            } catch (error) {
+                console.error('签署合同失败:', error);
+                showToast('签署合同失败', 'error');
+            }
+        }
+
+        // 作废合同
+        async function terminateContract(id) {
+            if (!confirm('确定要作废这份合同吗？此操作不可恢复！')) {
+                return;
+            }
+
+            try {
+                const response = await apiPost(`/contracts/${id}/terminate`);
+
+                if (response.code === 200) {
+                    showToast('合同已作废', 'success');
+                    loadContracts(pagination.page, pagination.pageSize);
+                } else {
+                    showToast(response.message || '作废合同失败', 'error');
+                }
+            } catch (error) {
+                console.error('作废合同失败:', error);
+                showToast('作废合同失败', 'error');
+            }
+        }
+
+        // 删除合同
+        async function deleteContract(id) {
+            if (!confirm('确定要删除这份合同吗？此操作不可恢复！')) {
+                return;
+            }
+
+            try {
+                const response = await apiDelete(`/contracts/${id}`);
+
+                if (response.code === 200) {
+                    showToast('合同已删除', 'success');
+                    loadContracts(pagination.page, pagination.pageSize);
+                } else {
+                    showToast(response.message || '删除失败', 'error');
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                showToast('删除失败', 'error');
+            }
+        }
+
+        // 导出合同
+        async function exportContracts() {
+            try {
+                const params = new URLSearchParams(currentFilters);
+                const token = getToken();
+
+                const response = await fetch(`${API_BASE_URL}/contracts/export?${params}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `contracts_export_${formatDate(new Date())}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showToast('导出成功', 'success');
+                } else {
+                    showToast('导出失败', 'error');
+                }
+            } catch (error) {
+                console.error('导出失败:', error);
+                showToast('导出失败', 'error');
+            }
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+        }
+
+        // 隐藏模态框
+        function hideModal() {
+            document.getElementById('contractModal').classList.remove('show');
+        }
+
+        function hideDetailModal() {
+            document.getElementById('contractDetailModal').classList.remove('show');
+            currentContractId = null;
+        }
+
+        // 点击模态框背景关闭
+        window.onclick = function(event) {
+            const contractModal = document.getElementById('contractModal');
+            const detailModal = document.getElementById('contractDetailModal');
+
+            if (event.target === contractModal) {
+                hideModal();
+            }
+            if (event.target === detailModal) {
+                hideDetailModal();
+            }
+        }
+    </script>
+
+    <style>
+        .modal-lg {
+            max-width: 900px;
+        }
+
+        .detail-container {
+            line-height: 1.8;
+        }
+
+        .detail-row {
+            display: flex;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-row label {
+            width: 120px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .detail-row span {
+            flex: 1;
+        }
+
+        .text-large {
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .file-name {
+            flex: 1;
+        }
+
+        .file-size {
+            color: var(--info-color);
+            margin-right: 12px;
+        }
+
+        .mt-3 {
+            margin-top: 24px;
+        }
+
+        .mt-2 {
+            margin-top: 16px;
+        }
+    </style>
+</body>
+</html>
