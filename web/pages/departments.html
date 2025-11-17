@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>部门管理 - CJAdmin</title>
+    <link rel="stylesheet" href="../static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>部门管理</h1>
+            <div class="page-actions">
+                <button class="btn btn-primary" onclick="showCreateModal()">
+                    <span>+ 创建部门</span>
+                </button>
+                <button class="btn btn-default" onclick="expandAll()">
+                    <span>展开全部</span>
+                </button>
+                <button class="btn btn-default" onclick="collapseAll()">
+                    <span>收起全部</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 部门树形列表 -->
+        <div class="card">
+            <div class="card-body">
+                <div id="departmentTreeContainer">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑部门模态框 -->
+    <div id="departmentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">创建部门</h2>
+                <button class="close" onclick="hideModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="departmentForm" onsubmit="handleSubmit(event)">
+                    <input type="hidden" id="departmentId">
+
+                    <div class="form-group">
+                        <label>部门名称 <span class="required">*</span></label>
+                        <input type="text" id="departmentName" class="form-control"
+                               required placeholder="请输入部门名称">
+                    </div>
+
+                    <div class="form-group">
+                        <label>上级部门</label>
+                        <select id="parentId" class="form-control">
+                            <option value="">顶级部门</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>部门负责人</label>
+                        <select id="managerId" class="form-control">
+                            <option value="">无</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>排序</label>
+                        <input type="number" id="sort" class="form-control"
+                               min="0" value="0" placeholder="数字越小越靠前">
+                    </div>
+
+                    <div class="form-group">
+                        <label>描述</label>
+                        <textarea id="description" class="form-control" rows="2"
+                                  placeholder="部门描述"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-default" onclick="hideModal()">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分配权限模态框 -->
+    <div id="permissionModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2>设置部门权限</h2>
+                <button class="close" onclick="hidePermissionModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="permissionForm" onsubmit="handlePermissionSubmit(event)">
+                    <input type="hidden" id="permDepartmentId">
+
+                    <div class="form-group">
+                        <label>部门名称</label>
+                        <input type="text" id="permDepartmentName" class="form-control" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>权限分配</label>
+                        <div id="permissionTree" class="permission-tree">
+                            <div class="loading">加载权限列表...</div>
+                        </div>
+                        <small class="form-text">
+                            部门权限会自动继承给所有子部门
+                        </small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-default"
+                                onclick="hidePermissionModal()">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/js/utils.js"></script>
+    <script>
+        let departmentTree = [];
+        let allUsers = [];
+        let allPermissions = [];
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            checkAuth();
+            await loadUsers();
+            await loadPermissions();
+            await loadDepartments();
+        });
+
+        // 加载用户列表（用于选择负责人）
+        async function loadUsers() {
+            try {
+                const response = await apiGet('/users', {
+                    page: 1,
+                    page_size: 1000
+                });
+
+                if (response.code === 200) {
+                    allUsers = response.data.list || [];
+                    updateManagerOptions();
+                }
+            } catch (error) {
+                console.error('加载用户列表失败:', error);
+            }
+        }
+
+        // 更新负责人选项
+        function updateManagerOptions() {
+            const managerSelect = document.getElementById('managerId');
+            const options = allUsers.map(u =>
+                `<option value="${u.id}">${u.real_name || u.username}</option>`
+            ).join('');
+            managerSelect.innerHTML = '<option value="">无</option>' + options;
+        }
+
+        // 加载权限列表
+        async function loadPermissions() {
+            try {
+                const response = await apiGet('/permissions', {
+                    page: 1,
+                    page_size: 1000
+                });
+
+                if (response.code === 200) {
+                    allPermissions = response.data.list || [];
+                }
+            } catch (error) {
+                console.error('加载权限列表失败:', error);
+            }
+        }
+
+        // 加载部门列表
+        async function loadDepartments() {
+            try {
+                const response = await apiGet('/departments');
+
+                if (response.code === 200) {
+                    departmentTree = response.data || [];
+                    renderTree(departmentTree);
+                    updateParentOptions(departmentTree);
+                } else {
+                    showToast(response.message || '加载部门列表失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载部门列表失败:', error);
+                showToast('加载部门列表失败', 'error');
+            }
+        }
+
+        // 渲染部门树
+        function renderTree(tree, container = null, level = 0) {
+            if (!container) {
+                container = document.getElementById('departmentTreeContainer');
+                if (tree.length === 0) {
+                    container.innerHTML = '<div class="empty-state">暂无部门数据</div>';
+                    return;
+                }
+                container.innerHTML = '<ul class="tree-list"></ul>';
+                container = container.querySelector('.tree-list');
+            }
+
+            tree.forEach(dept => {
+                const li = document.createElement('li');
+                li.className = 'tree-item';
+                li.dataset.id = dept.id;
+
+                const hasChildren = dept.children && dept.children.length > 0;
+
+                li.innerHTML = `
+                    <div class="tree-node" style="padding-left: ${level * 20}px;">
+                        ${hasChildren ? `
+                            <span class="tree-toggle" onclick="toggleNode(${dept.id})">
+                                <span class="toggle-icon">▼</span>
+                            </span>
+                        ` : '<span class="tree-toggle-placeholder"></span>'}
+                        <span class="tree-icon">📁</span>
+                        <span class="tree-label">${dept.department_name}</span>
+                        ${dept.manager_name ? `
+                            <span class="tree-meta">负责人: ${dept.manager_name}</span>
+                        ` : ''}
+                        <div class="tree-actions">
+                            <button class="btn btn-sm btn-primary"
+                                    onclick="editDepartment(${dept.id}); event.stopPropagation();"
+                                    title="编辑">
+                                编辑
+                            </button>
+                            <button class="btn btn-sm btn-info"
+                                    onclick="showPermissionModal(${dept.id}, '${dept.department_name}'); event.stopPropagation();"
+                                    title="设置权限">
+                                权限
+                            </button>
+                            <button class="btn btn-sm btn-success"
+                                    onclick="createChild(${dept.id}); event.stopPropagation();"
+                                    title="添加子部门">
+                                添加子部门
+                            </button>
+                            <button class="btn btn-sm btn-danger"
+                                    onclick="deleteDepartment(${dept.id}); event.stopPropagation();"
+                                    title="删除">
+                                删除
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(li);
+
+                if (hasChildren) {
+                    const childContainer = document.createElement('ul');
+                    childContainer.className = 'tree-children';
+                    li.appendChild(childContainer);
+                    renderTree(dept.children, childContainer, level + 1);
+                }
+            });
+        }
+
+        // 更新上级部门选项
+        function updateParentOptions(tree, prefix = '', currentId = null) {
+            const select = document.getElementById('parentId');
+            let options = '<option value="">顶级部门</option>';
+
+            const buildOptions = (items, prefix) => {
+                items.forEach(dept => {
+                    // 不能选择自己或自己的子部门作为上级
+                    if (dept.id !== currentId) {
+                        options += `<option value="${dept.id}">${prefix}${dept.department_name}</option>`;
+                        if (dept.children && dept.children.length > 0) {
+                            buildOptions(dept.children, prefix + '　');
+                        }
+                    }
+                });
+            };
+
+            buildOptions(tree, '');
+            select.innerHTML = options;
+        }
+
+        // 切换节点展开/收起
+        function toggleNode(id) {
+            const item = document.querySelector(`.tree-item[data-id="${id}"]`);
+            if (!item) return;
+
+            const children = item.querySelector('.tree-children');
+            const toggle = item.querySelector('.toggle-icon');
+
+            if (children) {
+                const isExpanded = children.style.display !== 'none';
+                children.style.display = isExpanded ? 'none' : 'block';
+                toggle.textContent = isExpanded ? '▶' : '▼';
+            }
+        }
+
+        // 展开全部
+        function expandAll() {
+            document.querySelectorAll('.tree-children').forEach(el => {
+                el.style.display = 'block';
+            });
+            document.querySelectorAll('.toggle-icon').forEach(el => {
+                el.textContent = '▼';
+            });
+        }
+
+        // 收起全部
+        function collapseAll() {
+            document.querySelectorAll('.tree-children').forEach(el => {
+                el.style.display = 'none';
+            });
+            document.querySelectorAll('.toggle-icon').forEach(el => {
+                el.textContent = '▶';
+            });
+        }
+
+        // 显示创建模态框
+        function showCreateModal() {
+            document.getElementById('modalTitle').textContent = '创建部门';
+            document.getElementById('departmentForm').reset();
+            document.getElementById('departmentId').value = '';
+            document.getElementById('parentId').value = '';
+            updateParentOptions(departmentTree);
+            document.getElementById('departmentModal').classList.add('show');
+        }
+
+        // 创建子部门
+        function createChild(parentId) {
+            document.getElementById('modalTitle').textContent = '创建子部门';
+            document.getElementById('departmentForm').reset();
+            document.getElementById('departmentId').value = '';
+            updateParentOptions(departmentTree);
+            document.getElementById('parentId').value = parentId;
+            document.getElementById('departmentModal').classList.add('show');
+        }
+
+        // 编辑部门
+        async function editDepartment(id) {
+            try {
+                const response = await apiGet(`/departments/${id}`);
+
+                if (response.code === 200) {
+                    const dept = response.data;
+                    document.getElementById('modalTitle').textContent = '编辑部门';
+                    document.getElementById('departmentId').value = dept.id;
+                    document.getElementById('departmentName').value = dept.department_name;
+                    updateParentOptions(departmentTree, '', dept.id);
+                    document.getElementById('parentId').value = dept.parent_id || '';
+                    document.getElementById('managerId').value = dept.manager_id || '';
+                    document.getElementById('sort').value = dept.sort || 0;
+                    document.getElementById('description').value = dept.description || '';
+                    document.getElementById('departmentModal').classList.add('show');
+                } else {
+                    showToast(response.message || '加载部门失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载部门失败:', error);
+                showToast('加载部门失败', 'error');
+            }
+        }
+
+        // 提交表单
+        async function handleSubmit(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('departmentId').value;
+            const data = {
+                department_name: document.getElementById('departmentName').value,
+                parent_id: document.getElementById('parentId').value || null,
+                manager_id: document.getElementById('managerId').value || null,
+                sort: parseInt(document.getElementById('sort').value) || 0,
+                description: document.getElementById('description').value
+            };
+
+            try {
+                let response;
+                if (id) {
+                    response = await apiPut(`/departments/${id}`, data);
+                } else {
+                    response = await apiPost('/departments', data);
+                }
+
+                if (response.code === 200) {
+                    showToast(id ? '部门更新成功' : '部门创建成功', 'success');
+                    hideModal();
+                    loadDepartments();
+                } else {
+                    showToast(response.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存部门失败:', error);
+                showToast('保存部门失败', 'error');
+            }
+        }
+
+        // 删除部门
+        async function deleteDepartment(id) {
+            if (!confirm('确定要删除这个部门吗？子部门也将被删除！')) {
+                return;
+            }
+
+            try {
+                const response = await apiDelete(`/departments/${id}`);
+
+                if (response.code === 200) {
+                    showToast('部门已删除', 'success');
+                    loadDepartments();
+                } else {
+                    showToast(response.message || '删除失败', 'error');
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                showToast('删除失败', 'error');
+            }
+        }
+
+        // 显示权限模态框
+        async function showPermissionModal(departmentId, departmentName) {
+            document.getElementById('permDepartmentId').value = departmentId;
+            document.getElementById('permDepartmentName').value = departmentName;
+
+            try {
+                const response = await apiGet(`/departments/${departmentId}/permissions`);
+                if (response.code === 200) {
+                    const permIds = response.data ? response.data.map(p => p.id) : [];
+                    renderPermissionTree(permIds);
+                    document.getElementById('permissionModal').classList.add('show');
+                } else {
+                    showToast(response.message || '加载权限失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载权限失败:', error);
+                showToast('加载权限失败', 'error');
+            }
+        }
+
+        // 渲染权限树
+        function renderPermissionTree(selectedIds) {
+            const groups = {};
+            allPermissions.forEach(perm => {
+                const group = perm.permission_group || 'other';
+                if (!groups[group]) {
+                    groups[group] = [];
+                }
+                groups[group].push(perm);
+            });
+
+            const groupNames = {
+                customer: '客户管理',
+                order: '订单管理',
+                finance: '财务管理',
+                system: '系统管理',
+                other: '其他'
+            };
+
+            let html = '<div class="permission-groups">';
+
+            Object.keys(groups).forEach(groupKey => {
+                html += `
+                    <div class="permission-group">
+                        <div class="group-header">
+                            <label>
+                                <input type="checkbox"
+                                       class="group-checkbox"
+                                       data-group="${groupKey}"
+                                       onchange="toggleGroupPermissions('${groupKey}')">
+                                <strong>${groupNames[groupKey] || groupKey}</strong>
+                            </label>
+                        </div>
+                        <div class="group-permissions">
+                `;
+
+                groups[groupKey].forEach(perm => {
+                    const checked = selectedIds.includes(perm.id) ? 'checked' : '';
+                    html += `
+                        <label class="permission-item">
+                            <input type="checkbox"
+                                   name="permissions"
+                                   value="${perm.id}"
+                                   data-group="${groupKey}"
+                                   ${checked}>
+                            ${perm.permission_name}
+                            <small>(${perm.permission_code})</small>
+                        </label>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+
+            document.getElementById('permissionTree').innerHTML = html;
+            updateGroupCheckboxes();
+        }
+
+        // 切换分组权限
+        function toggleGroupPermissions(groupKey) {
+            const groupCheckbox = document.querySelector(`.group-checkbox[data-group="${groupKey}"]`);
+            const checkboxes = document.querySelectorAll(`input[name="permissions"][data-group="${groupKey}"]`);
+
+            checkboxes.forEach(cb => {
+                cb.checked = groupCheckbox.checked;
+            });
+        }
+
+        // 更新分组复选框状态
+        function updateGroupCheckboxes() {
+            const groups = document.querySelectorAll('.permission-group');
+
+            groups.forEach(group => {
+                const groupCheckbox = group.querySelector('.group-checkbox');
+                const checkboxes = group.querySelectorAll('input[name="permissions"]');
+                const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+                if (checkedCount === 0) {
+                    groupCheckbox.checked = false;
+                    groupCheckbox.indeterminate = false;
+                } else if (checkedCount === checkboxes.length) {
+                    groupCheckbox.checked = true;
+                    groupCheckbox.indeterminate = false;
+                } else {
+                    groupCheckbox.checked = false;
+                    groupCheckbox.indeterminate = true;
+                }
+            });
+        }
+
+        // 提交权限表单
+        async function handlePermissionSubmit(event) {
+            event.preventDefault();
+
+            const departmentId = document.getElementById('permDepartmentId').value;
+            const permissionCheckboxes = document.querySelectorAll('input[name="permissions"]:checked');
+            const permissionIds = Array.from(permissionCheckboxes).map(cb => parseInt(cb.value));
+
+            try {
+                const response = await apiPost(`/departments/${departmentId}/permissions`, {
+                    permission_ids: permissionIds
+                });
+
+                if (response.code === 200) {
+                    showToast('权限设置成功', 'success');
+                    hidePermissionModal();
+                } else {
+                    showToast(response.message || '设置权限失败', 'error');
+                }
+            } catch (error) {
+                console.error('设置权限失败:', error);
+                showToast('设置权限失败', 'error');
+            }
+        }
+
+        // 隐藏模态框
+        function hideModal() {
+            document.getElementById('departmentModal').classList.remove('show');
+        }
+
+        function hidePermissionModal() {
+            document.getElementById('permissionModal').classList.remove('show');
+        }
+
+        // 点击模态框背景关闭
+        window.onclick = function(event) {
+            const deptModal = document.getElementById('departmentModal');
+            const permModal = document.getElementById('permissionModal');
+
+            if (event.target === deptModal) {
+                hideModal();
+            }
+            if (event.target === permModal) {
+                hidePermissionModal();
+            }
+        }
+
+        // 监听权限复选框变化
+        document.addEventListener('change', function(event) {
+            if (event.target.name === 'permissions') {
+                updateGroupCheckboxes();
+            }
+        });
+    </script>
+
+    <style>
+        .tree-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .tree-item {
+            margin: 0;
+        }
+
+        .tree-node {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.2s;
+        }
+
+        .tree-node:hover {
+            background-color: var(--bg-color);
+        }
+
+        .tree-toggle {
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .tree-toggle-placeholder {
+            width: 20px;
+            display: inline-block;
+        }
+
+        .toggle-icon {
+            font-size: 12px;
+        }
+
+        .tree-icon {
+            margin: 0 8px;
+            font-size: 18px;
+        }
+
+        .tree-label {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .tree-meta {
+            color: var(--info-color);
+            font-size: 12px;
+            margin-right: 12px;
+        }
+
+        .tree-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .tree-node:hover .tree-actions {
+            opacity: 1;
+        }
+
+        .tree-children {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .modal-lg {
+            max-width: 800px;
+        }
+
+        .permission-groups {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .permission-group {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .permission-group:last-child {
+            border-bottom: none;
+        }
+
+        .group-header {
+            padding: 12px;
+            background-color: var(--bg-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .group-header label {
+            margin: 0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .group-permissions {
+            padding: 12px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+        }
+
+        .permission-item {
+            display: flex;
+            align-items: center;
+            padding: 4px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .permission-item input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .permission-item small {
+            color: var(--info-color);
+            margin-left: 4px;
+        }
+    </style>
+</body>
+</html>
