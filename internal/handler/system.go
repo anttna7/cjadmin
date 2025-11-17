@@ -380,3 +380,129 @@ func escapeQuotes(s string) string {
 	}
 	return result
 }
+
+// ===== 字段变更历史接口 =====
+
+// GetFieldChangeHistory 获取字段变更历史
+func (h *SystemHandler) GetFieldChangeHistory(c *gin.Context) {
+	tenantID := middleware.GetTenantID(c)
+	if tenantID == nil {
+		utils.Error(c, utils.CodeForbidden, "租户ID不能为空")
+		return
+	}
+
+	resourceType := c.Query("resource_type")
+	resourceIDStr := c.Query("resource_id")
+	fieldName := c.Query("field_name")
+
+	if resourceType == "" || resourceIDStr == "" {
+		utils.Error(c, utils.CodeInvalidParams, "资源类型和资源ID不能为空")
+		return
+	}
+
+	resourceID, err := strconv.ParseInt(resourceIDStr, 10, 64)
+	if err != nil {
+		utils.Error(c, utils.CodeInvalidParams, "资源ID格式错误")
+		return
+	}
+
+	var fieldNamePtr *string
+	if fieldName != "" {
+		fieldNamePtr = &fieldName
+	}
+
+	logs, err := h.systemService.GetFieldChangeHistory(*tenantID, resourceType, resourceID, fieldNamePtr)
+	if err != nil {
+		utils.Error(c, utils.CodeInternalError, err.Error())
+		return
+	}
+
+	utils.Success(c, gin.H{
+		"logs": logs,
+	})
+}
+
+// ===== 导入日志接口 =====
+
+// QueryImportLogs 查询导入日志
+func (h *SystemHandler) QueryImportLogs(c *gin.Context) {
+	tenantID := middleware.GetTenantID(c)
+	if tenantID == nil {
+		utils.Error(c, utils.CodeForbidden, "租户ID不能为空")
+		return
+	}
+
+	var req service.QueryImportLogRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		utils.Error(c, utils.CodeInvalidParams, err.Error())
+		return
+	}
+
+	// 设置默认值
+	if req.Page == 0 {
+		req.Page = 1
+	}
+	if req.Size == 0 {
+		req.Size = 20
+	}
+
+	logs, total, err := h.systemService.QueryImportLogs(*tenantID, &req)
+	if err != nil {
+		utils.Error(c, utils.CodeInternalError, err.Error())
+		return
+	}
+
+	utils.Success(c, gin.H{
+		"list":  logs,
+		"total": total,
+		"page":  req.Page,
+		"size":  req.Size,
+	})
+}
+
+// GetImportLog 获取导入日志详情
+func (h *SystemHandler) GetImportLog(c *gin.Context) {
+	tenantID := middleware.GetTenantID(c)
+	if tenantID == nil {
+		utils.Error(c, utils.CodeForbidden, "租户ID不能为空")
+		return
+	}
+
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.Error(c, utils.CodeInvalidParams, "ID格式错误")
+		return
+	}
+
+	log, err := h.systemService.GetImportLog(*tenantID, id)
+	if err != nil {
+		utils.Error(c, utils.CodeNotFound, err.Error())
+		return
+	}
+
+	utils.Success(c, log)
+}
+
+// GetImportStatistics 获取导入统计
+func (h *SystemHandler) GetImportStatistics(c *gin.Context) {
+	tenantID := middleware.GetTenantID(c)
+	if tenantID == nil {
+		utils.Error(c, utils.CodeForbidden, "租户ID不能为空")
+		return
+	}
+
+	daysStr := c.DefaultQuery("days", "30")
+	days, err := strconv.Atoi(daysStr)
+	if err != nil || days <= 0 {
+		days = 30
+	}
+
+	stats, err := h.systemService.GetImportStatistics(*tenantID, days)
+	if err != nil {
+		utils.Error(c, utils.CodeInternalError, err.Error())
+		return
+	}
+
+	utils.Success(c, stats)
+}

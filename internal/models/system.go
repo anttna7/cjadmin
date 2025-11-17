@@ -20,21 +20,28 @@ type SystemSetting struct {
 
 // AuditLog 审计日志表
 type AuditLog struct {
-	ID           int64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	TenantID     *int64    `gorm:"index" json:"tenant_id"`
-	UserID       *int64    `gorm:"index" json:"user_id"`
-	Action       string    `gorm:"size:100;not null" json:"action"`
-	ResourceType string    `gorm:"size:50" json:"resource_type"`
-	ResourceID   *int64    `json:"resource_id"`
-	IPAddress    string    `gorm:"size:50" json:"ip_address"`
-	UserAgent    string    `gorm:"type:text" json:"user_agent"`
-	RequestData  JSONB     `gorm:"type:jsonb" json:"request_data,omitempty"`
-	ResponseData JSONB     `gorm:"type:jsonb" json:"response_data,omitempty"`
-	CreatedAt    time.Time `gorm:"autoCreateTime;index:idx_audit_created" json:"created_at"`
+	ID            int64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	TenantID      *int64    `gorm:"index" json:"tenant_id"`
+	UserID        *int64    `gorm:"index" json:"user_id"`
+	Action        string    `gorm:"size:100;not null" json:"action"`
+	ResourceType  string    `gorm:"size:50" json:"resource_type"`
+	ResourceID    *int64    `json:"resource_id"`
+	IPAddress     string    `gorm:"size:50" json:"ip_address"`
+	UserAgent     string    `gorm:"type:text" json:"user_agent"`
+	RequestData   JSONB     `gorm:"type:jsonb" json:"request_data,omitempty"`
+	ResponseData  JSONB     `gorm:"type:jsonb" json:"response_data,omitempty"`
+	ChangedFields JSONB     `gorm:"type:jsonb" json:"changed_fields,omitempty"` // 字段级变更追踪：{"field_name": {"before": "old_value", "after": "new_value"}}
+	CreatedAt     time.Time `gorm:"autoCreateTime;index:idx_audit_created" json:"created_at"`
 
 	// 关联
 	Tenant *Tenant `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
 	User   *User   `gorm:"foreignKey:UserID" json:"user,omitempty"`
+}
+
+// FieldChange 字段变更记录结构
+type FieldChange struct {
+	Before interface{} `json:"before"`
+	After  interface{} `json:"after"`
 }
 
 // ImportLog 导入日志表

@@ -299,7 +299,7 @@ func (h *CustomerHandler) ImportCustomers(c *gin.Context) {
 
 	// 批量导入
 	userID := middleware.GetUserID(c)
-	importLog, err := h.customerService.ImportCustomers(*tenantID, requests, userID)
+	importLog, err := h.customerService.ImportCustomers(*tenantID, file.Filename, requests, userID)
 	if err != nil {
 		utils.Error(c, utils.CodeInternalError, err.Error())
 		return

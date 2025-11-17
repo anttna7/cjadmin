@@ -275,6 +275,16 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 				auditLogs.GET("/:id", middleware.RequirePermission("system.read"), systemHandler.GetAuditLog)
 				auditLogs.GET("/statistics", middleware.RequirePermission("system.read"), systemHandler.GetAuditStatistics)
 				auditLogs.POST("/clean", middleware.RequirePermission("system.delete"), systemHandler.CleanOldAuditLogs)
+				auditLogs.GET("/field-changes", middleware.RequirePermission("system.read"), systemHandler.GetFieldChangeHistory)
+			}
+
+			// 导入日志管理
+			importLogs := authorized.Group("/import-logs")
+			importLogs.Use(middleware.TenantMiddleware())
+			{
+				importLogs.GET("", middleware.RequirePermission("system.read"), systemHandler.QueryImportLogs)
+				importLogs.GET("/:id", middleware.RequirePermission("system.read"), systemHandler.GetImportLog)
+				importLogs.GET("/statistics", middleware.RequirePermission("system.read"), systemHandler.GetImportStatistics)
 			}
 
 			// 文件上传管理

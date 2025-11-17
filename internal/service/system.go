@@ -27,10 +27,28 @@ type ListSettingRequest struct {
 }
 
 type CreateAuditLogRequest struct {
-	Action       string `json:"action" binding:"required"`
-	ResourceType string `json:"resource_type" binding:"required"`
-	ResourceID   *int64 `json:"resource_id"`
-	Details      string `json:"details"`
+	Action        string                        `json:"action" binding:"required"`
+	ResourceType  string                        `json:"resource_type" binding:"required"`
+	ResourceID    *int64                        `json:"resource_id"`
+	Details       string                        `json:"details"`
+	ChangedFields map[string]models.FieldChange `json:"changed_fields,omitempty"` // 字段级变更追踪
+}
+
+type CreateImportLogRequest struct {
+	ImportType   string                   `json:"import_type" binding:"required"`
+	FileName     string                   `json:"file_name" binding:"required"`
+	TotalRows    int                      `json:"total_rows"`
+	SuccessRows  int                      `json:"success_rows"`
+	FailedRows   int                      `json:"failed_rows"`
+	ErrorDetails []map[string]interface{} `json:"error_details,omitempty"`
+	Status       string                   `json:"status"` // processing, completed, failed
+}
+
+type QueryImportLogRequest struct {
+	Page       int    `form:"page" binding:"min=1"`
+	Size       int    `form:"size" binding:"min=1,max=100"`
+	ImportType string `form:"import_type"`
+	Status     string `form:"status"`
 }
 
 type QueryAuditLogRequest struct {
@@ -200,7 +218,7 @@ func (s *SystemService) SetPlatformSetting(req *SetSettingRequest, updatedBy int
 }
 
 // CreateAuditLog 创建审计日志
-// 任务 11.3.1: 创建审计日志
+// 任务 11.3.1: 创建审计日志（含字段级变更追踪）
 func (s *SystemService) CreateAuditLog(tenantID, userID int64, req *CreateAuditLogRequest, ipAddress, userAgent string) error {
 	auditLog := &models.AuditLog{
 		TenantModel: models.TenantModel{
@@ -215,7 +233,81 @@ func (s *SystemService) CreateAuditLog(tenantID, userID int64, req *CreateAuditL
 		UserAgent:    userAgent,
 	}
 
+	// 如果有字段变更信息，序列化并存储
+	if req.ChangedFields != nil && len(req.ChangedFields) > 0 {
+		changedFieldsBytes, err := json.Marshal(req.ChangedFields)
+		if err == nil {
+			auditLog.ChangedFields = changedFieldsBytes
+		}
+	}
+
 	return database.DB.Create(auditLog).Error
+}
+
+// CompareAndTrackChanges 比较两个对象的字段变更
+// 用于自动生成字段级别的变更记录
+func (s *SystemService) CompareAndTrackChanges(before, after interface{}) map[string]models.FieldChange {
+	changes := make(map[string]models.FieldChange)
+
+	beforeBytes, _ := json.Marshal(before)
+	afterBytes, _ := json.Marshal(after)
+
+	var beforeMap, afterMap map[string]interface{}
+	json.Unmarshal(beforeBytes, &beforeMap)
+	json.Unmarshal(afterBytes, &afterMap)
+
+	// 比较所有字段
+	for key, afterValue := range afterMap {
+		beforeValue, exists := beforeMap[key]
+		// 忽略系统字段
+		if key == "created_at" || key == "updated_at" || key == "deleted_at" {
+			continue
+		}
+		// 如果字段不存在或值不同，记录变更
+		if !exists || !compareValues(beforeValue, afterValue) {
+			changes[key] = models.FieldChange{
+				Before: beforeValue,
+				After:  afterValue,
+			}
+		}
+	}
+
+	return changes
+}
+
+// compareValues 比较两个值是否相等
+func compareValues(a, b interface{}) bool {
+	aBytes, _ := json.Marshal(a)
+	bBytes, _ := json.Marshal(b)
+	return string(aBytes) == string(bBytes)
+}
+
+// GetFieldChangeHistory 获取指定资源的字段变更历史
+func (s *SystemService) GetFieldChangeHistory(tenantID int64, resourceType string, resourceID int64, fieldName *string) ([]models.AuditLog, error) {
+	query := database.DB.Model(&models.AuditLog{}).
+		Where("tenant_id = ? AND resource_type = ? AND resource_id = ? AND changed_fields IS NOT NULL",
+			tenantID, resourceType, resourceID)
+
+	var logs []models.AuditLog
+	if err := query.Preload("User").Order("created_at DESC").Find(&logs).Error; err != nil {
+		return nil, err
+	}
+
+	// 如果指定了字段名，过滤出包含该字段变更的日志
+	if fieldName != nil && *fieldName != "" {
+		var filteredLogs []models.AuditLog
+		for _, log := range logs {
+			var changes map[string]models.FieldChange
+			if err := json.Unmarshal(log.ChangedFields, &changes); err == nil {
+				if _, exists := changes[*fieldName]; exists {
+					filteredLogs = append(filteredLogs, log)
+				}
+			}
+		}
+		return filteredLogs, nil
+	}
+
+	return logs, nil
 }
 
 // QueryAuditLogs 查询审计日志
@@ -337,4 +429,158 @@ func (s *SystemService) CleanOldAuditLogs(tenantID int64, daysToKeep int) (int64
 	}
 
 	return result.RowsAffected, nil
+}
+
+// ===== 导入日志相关方法 =====
+
+// CreateImportLog 创建导入日志
+func (s *SystemService) CreateImportLog(tenantID, userID int64, req *CreateImportLogRequest) (*models.ImportLog, error) {
+	importLog := &models.ImportLog{
+		TenantModel: models.TenantModel{
+			TenantID: tenantID,
+		},
+		ImportType:  req.ImportType,
+		FileName:    req.FileName,
+		TotalRows:   req.TotalRows,
+		SuccessRows: req.SuccessRows,
+		FailedRows:  req.FailedRows,
+		Status:      req.Status,
+		ImportedBy:  &userID,
+	}
+
+	// 序列化错误详情
+	if req.ErrorDetails != nil && len(req.ErrorDetails) > 0 {
+		errorDetailsBytes, err := json.Marshal(req.ErrorDetails)
+		if err == nil {
+			importLog.ErrorDetails = errorDetailsBytes
+		}
+	}
+
+	if err := database.DB.Create(importLog).Error; err != nil {
+		return nil, err
+	}
+
+	return importLog, nil
+}
+
+// UpdateImportLog 更新导入日志
+func (s *SystemService) UpdateImportLog(tenantID, logID int64, req *CreateImportLogRequest) error {
+	updates := map[string]interface{}{
+		"total_rows":   req.TotalRows,
+		"success_rows": req.SuccessRows,
+		"failed_rows":  req.FailedRows,
+		"status":       req.Status,
+	}
+
+	// 更新错误详情
+	if req.ErrorDetails != nil {
+		errorDetailsBytes, err := json.Marshal(req.ErrorDetails)
+		if err == nil {
+			updates["error_details"] = errorDetailsBytes
+		}
+	}
+
+	return database.DB.Model(&models.ImportLog{}).
+		Where("id = ? AND tenant_id = ?", logID, tenantID).
+		Updates(updates).Error
+}
+
+// QueryImportLogs 查询导入日志
+func (s *SystemService) QueryImportLogs(tenantID int64, req *QueryImportLogRequest) ([]models.ImportLog, int64, error) {
+	var logs []models.ImportLog
+	var total int64
+
+	query := database.DB.Model(&models.ImportLog{}).Where("tenant_id = ?", tenantID)
+
+	// 过滤条件
+	if req.ImportType != "" {
+		query = query.Where("import_type = ?", req.ImportType)
+	}
+	if req.Status != "" {
+		query = query.Where("status = ?", req.Status)
+	}
+
+	// 统计总数
+	query.Count(&total)
+
+	// 分页查询
+	offset := (req.Page - 1) * req.Size
+	if err := query.Offset(offset).Limit(req.Size).
+		Preload("Importer").
+		Order("created_at DESC").
+		Find(&logs).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return logs, total, nil
+}
+
+// GetImportLog 获取导入日志详情
+func (s *SystemService) GetImportLog(tenantID, logID int64) (*models.ImportLog, error) {
+	var log models.ImportLog
+	if err := database.DB.Where("id = ? AND tenant_id = ?", logID, tenantID).
+		Preload("Importer").
+		First(&log).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("导入日志不存在")
+		}
+		return nil, err
+	}
+	return &log, nil
+}
+
+// GetImportStatistics 获取导入统计信息
+func (s *SystemService) GetImportStatistics(tenantID int64, days int) (map[string]interface{}, error) {
+	stats := make(map[string]interface{})
+
+	// 计算时间范围
+	startDate := time.Now().AddDate(0, 0, -days)
+
+	// 总导入次数
+	var totalImports int64
+	database.DB.Model(&models.ImportLog{}).
+		Where("tenant_id = ? AND created_at >= ?", tenantID, startDate).
+		Count(&totalImports)
+	stats["total_imports"] = totalImports
+
+	// 按类型统计
+	type TypeStat struct {
+		ImportType string `json:"import_type"`
+		Count      int64  `json:"count"`
+	}
+	var typeStats []TypeStat
+	database.DB.Model(&models.ImportLog{}).
+		Select("import_type, COUNT(*) as count").
+		Where("tenant_id = ? AND created_at >= ?", tenantID, startDate).
+		Group("import_type").
+		Scan(&typeStats)
+	stats["by_type"] = typeStats
+
+	// 按状态统计
+	type StatusStat struct {
+		Status string `json:"status"`
+		Count  int64  `json:"count"`
+	}
+	var statusStats []StatusStat
+	database.DB.Model(&models.ImportLog{}).
+		Select("status, COUNT(*) as count").
+		Where("tenant_id = ? AND created_at >= ?", tenantID, startDate).
+		Group("status").
+		Scan(&statusStats)
+	stats["by_status"] = statusStats
+
+	// 总导入行数
+	type RowStat struct {
+		TotalRows   int64 `json:"total_rows"`
+		SuccessRows int64 `json:"success_rows"`
+		FailedRows  int64 `json:"failed_rows"`
+	}
+	var rowStat RowStat
+	database.DB.Model(&models.ImportLog{}).
+		Select("SUM(total_rows) as total_rows, SUM(success_rows) as success_rows, SUM(failed_rows) as failed_rows").
+		Where("tenant_id = ? AND created_at >= ?", tenantID, startDate).
+		Scan(&rowStat)
+	stats["rows"] = rowStat
+
+	return stats, nil
 }

@@ -227,10 +227,11 @@ func (s *CustomerService) List(tenantID int64, req *ListCustomerRequest) ([]mode
 }
 
 // ImportCustomers 批量导入客户
-func (s *CustomerService) ImportCustomers(tenantID int64, data []CreateCustomerRequest, importedBy int64) (*models.ImportLog, error) {
+func (s *CustomerService) ImportCustomers(tenantID int64, fileName string, data []CreateCustomerRequest, importedBy int64) (*models.ImportLog, error) {
 	importLog := &models.ImportLog{
 		TenantModel: models.TenantModel{TenantID: tenantID},
 		ImportType:  "customer",
+		FileName:    fileName,
 		TotalRows:   len(data),
 		SuccessRows: 0,
 		FailedRows:  0,
@@ -238,25 +239,36 @@ func (s *CustomerService) ImportCustomers(tenantID int64, data []CreateCustomerR
 		ImportedBy:  &importedBy,
 	}
 
-	database.DB.Create(importLog)
+	// 创建导入日志记录
+	if err := database.DB.Create(importLog).Error; err != nil {
+		return nil, err
+	}
 
-	errorDetails := make(map[string]interface{})
+	// 错误详情列表
+	var errorDetails []map[string]interface{}
 
+	// 逐行导入
 	for i, req := range data {
 		_, err := s.Create(tenantID, &req)
 		if err != nil {
 			importLog.FailedRows++
-			errorDetails[fmt.Sprintf("row_%d", i+1)] = err.Error()
+			errorDetails = append(errorDetails, map[string]interface{}{
+				"row":           i + 1,
+				"customer_name": req.CustomerName,
+				"error":         err.Error(),
+			})
 		} else {
 			importLog.SuccessRows++
 		}
 	}
 
+	// 更新导入日志状态
+	importLog.Status = "completed"
 	if importLog.FailedRows > 0 {
-		importLog.ErrorDetails = errorDetails
+		errorDetailsBytes, _ := json.Marshal(errorDetails)
+		importLog.ErrorDetails = errorDetailsBytes
 	}
 
-	importLog.Status = "completed"
 	database.DB.Save(importLog)
 
 	return importLog, nil
