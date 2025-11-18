@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>活动管理 - CJAdmin</title>
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>活动管理</h1>
+            <div class="page-actions">
+                <button class="btn btn-primary" onclick="showCreateModal()">+ 创建活动</button>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-row" id="statsContainer">
+            <div class="stat-card">
+                <div class="stat-value" id="totalCount">0</div>
+                <div class="stat-label">总活动数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="activeCount">0</div>
+                <div class="stat-label">进行中</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalParticipants">0</div>
+                <div class="stat-label">总参与人次</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalViews">0</div>
+                <div class="stat-label">总浏览次数</div>
+            </div>
+        </div>
+
+        <!-- 搜索过滤 -->
+        <div class="card">
+            <div class="card-body">
+                <form class="search-form" onsubmit="handleSearch(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>活动名称</label>
+                            <input type="text" id="filterName" class="form-control" placeholder="搜索活动名称">
+                        </div>
+                        <div class="form-group">
+                            <label>活动类型</label>
+                            <select id="filterType" class="form-control">
+                                <option value="">全部</option>
+                                <option value="promotion">促销活动</option>
+                                <option value="discount">折扣活动</option>
+                                <option value="gift">赠品活动</option>
+                                <option value="lottery">抽奖活动</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>展示位置</label>
+                            <select id="filterPosition" class="form-control">
+                                <option value="">全部</option>
+                                <option value="login">登录页</option>
+                                <option value="recharge">充值页</option>
+                                <option value="dashboard">仪表板</option>
+                                <option value="popup">弹窗</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>状态</label>
+                            <select id="filterStatus" class="form-control">
+                                <option value="">全部</option>
+                                <option value="true">启用</option>
+                                <option value="false">禁用</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">搜索</button>
+                        <button type="button" class="btn btn-default" onclick="resetFilters()">重置</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 活动列表 -->
+        <div class="card">
+            <div class="card-body">
+                <div id="activityTableContainer">
+                    <div class="loading">加载中...</div>
+                </div>
+                <div id="paginationContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑活动模态框 -->
+    <div id="activityModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">创建活动</h3>
+                <button class="modal-close" onclick="hideModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="activityForm">
+                    <input type="hidden" id="activityId">
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label class="form-label">活动名称 <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="name" required>
+                        </div>
+                        <div class="form-group col-6">
+                            <label class="form-label">活动类型 <span class="required">*</span></label>
+                            <select class="form-control" id="activityType" required>
+                                <option value="promotion">促销活动</option>
+                                <option value="discount">折扣活动</option>
+                                <option value="gift">赠品活动</option>
+                                <option value="lottery">抽奖活动</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">活动描述</label>
+                        <textarea class="form-control" id="description" rows="3"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label class="form-label">展示位置 <span class="required">*</span></label>
+                            <select class="form-control" id="displayPosition" required>
+                                <option value="recharge">充值页</option>
+                                <option value="login">登录页</option>
+                                <option value="dashboard">仪表板</option>
+                                <option value="popup">弹窗</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-6">
+                            <label class="form-label">最大参与人数</label>
+                            <input type="number" class="form-control" id="maxParticipants" min="0" value="0" placeholder="0表示不限制">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label class="form-label">开始时间 <span class="required">*</span></label>
+                            <input type="datetime-local" class="form-control" id="startTime" required>
+                        </div>
+                        <div class="form-group col-6">
+                            <label class="form-label">结束时间 <span class="required">*</span></label>
+                            <input type="datetime-local" class="form-control" id="endTime" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label class="form-label">活动图片URL</label>
+                            <input type="text" class="form-control" id="imageUrl" placeholder="https://...">
+                        </div>
+                        <div class="form-group col-6">
+                            <label class="form-label">链接URL</label>
+                            <input type="text" class="form-control" id="linkUrl" placeholder="https://...">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label class="form-label">排序</label>
+                            <input type="number" class="form-control" id="sortOrder" value="0">
+                        </div>
+                        <div class="form-group col-6">
+                            <label class="form-label">状态</label>
+                            <select class="form-control" id="isActive">
+                                <option value="true">启用</option>
+                                <option value="false">禁用</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="hideModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveActivity()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 参与者列表模态框 -->
+    <div id="participantsModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 class="modal-title">参与者列表</h3>
+                <button class="modal-close" onclick="hideParticipantsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="participantsContainer">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/utils.js"></script>
+    <script>
+        let pagination;
+        let currentFilters = {};
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!isLoggedIn()) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            pagination = new Pagination(
+                document.getElementById('paginationContainer'),
+                {
+                    page: 1,
+                    pageSize: 10,
+                    total: 0,
+                    onChange: (page, pageSize) => {
+                        loadActivities(page, pageSize);
+                    }
+                }
+            );
+
+            loadStatistics();
+            loadActivities();
+        });
+
+        async function loadStatistics() {
+            try {
+                const response = await apiGet('/activities/statistics');
+                if (response.code === 200) {
+                    const stats = response.data;
+                    document.getElementById('totalCount').textContent = stats.total_count || 0;
+                    document.getElementById('activeCount').textContent = stats.active_count || 0;
+                    document.getElementById('totalParticipants').textContent = stats.total_participants || 0;
+                    document.getElementById('totalViews').textContent = stats.total_views || 0;
+                }
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+
+        async function loadActivities(page = 1, pageSize = 10) {
+            try {
+                const params = { page, page_size: pageSize, ...currentFilters };
+                const response = await apiGet('/activities', params);
+
+                if (response.code === 200) {
+                    renderTable(response.data.list || []);
+                    pagination.setTotal(response.data.total || 0);
+                }
+            } catch (error) {
+                showToast('加载活动列表失败', 'error');
+            }
+        }
+
+        function renderTable(activities) {
+            const typeMap = {
+                promotion: '促销活动',
+                discount: '折扣活动',
+                gift: '赠品活动',
+                lottery: '抽奖活动'
+            };
+
+            const positionMap = {
+                login: '登录页',
+                recharge: '充值页',
+                dashboard: '仪表板',
+                popup: '弹窗'
+            };
+
+            if (activities.length === 0) {
+                document.getElementById('activityTableContainer').innerHTML =
+                    '<div class="empty-state">暂无活动数据</div>';
+                return;
+            }
+
+            const now = new Date();
+            const html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>活动名称</th>
+                            <th>类型</th>
+                            <th>展示位置</th>
+                            <th>时间范围</th>
+                            <th>参与/浏览</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${activities.map(activity => {
+                            const startTime = new Date(activity.start_time);
+                            const endTime = new Date(activity.end_time);
+                            const isOngoing = now >= startTime && now <= endTime && activity.is_active;
+                            const statusText = !activity.is_active ? '已禁用' :
+                                (now < startTime ? '未开始' : (now > endTime ? '已结束' : '进行中'));
+                            const statusType = !activity.is_active ? 'default' :
+                                (now < startTime ? 'warning' : (now > endTime ? 'default' : 'success'));
+
+                            return `
+                                <tr>
+                                    <td>
+                                        <strong>${activity.name}</strong>
+                                        ${activity.description ? `<br><small class="text-muted">${activity.description.substring(0, 50)}...</small>` : ''}
+                                    </td>
+                                    <td>${typeMap[activity.activity_type] || activity.activity_type}</td>
+                                    <td>${positionMap[activity.display_position] || activity.display_position}</td>
+                                    <td>
+                                        <small>${formatDate(activity.start_time)}</small><br>
+                                        <small>${formatDate(activity.end_time)}</small>
+                                    </td>
+                                    <td>
+                                        ${activity.participant_count} / ${activity.view_count}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-${statusType}">${statusText}</span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" onclick="editActivity(${activity.id})">编辑</button>
+                                        <button class="btn btn-sm btn-info" onclick="viewParticipants(${activity.id})">参与者</button>
+                                        <button class="btn btn-sm btn-${activity.is_active ? 'warning' : 'success'}" onclick="toggleStatus(${activity.id})">
+                                            ${activity.is_active ? '禁用' : '启用'}
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteActivity(${activity.id})">删除</button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('activityTableContainer').innerHTML = html;
+        }
+
+        function handleSearch(event) {
+            event.preventDefault();
+            currentFilters = {
+                name: document.getElementById('filterName').value,
+                activity_type: document.getElementById('filterType').value,
+                display_position: document.getElementById('filterPosition').value,
+                is_active: document.getElementById('filterStatus').value
+            };
+
+            Object.keys(currentFilters).forEach(key => {
+                if (!currentFilters[key]) delete currentFilters[key];
+            });
+
+            pagination.page = 1;
+            loadActivities(1, pagination.pageSize);
+        }
+
+        function resetFilters() {
+            document.getElementById('filterName').value = '';
+            document.getElementById('filterType').value = '';
+            document.getElementById('filterPosition').value = '';
+            document.getElementById('filterStatus').value = '';
+            currentFilters = {};
+            loadActivities();
+        }
+
+        function showCreateModal() {
+            document.getElementById('modalTitle').textContent = '创建活动';
+            document.getElementById('activityForm').reset();
+            document.getElementById('activityId').value = '';
+            document.getElementById('isActive').value = 'true';
+            new Modal('activityModal').show();
+        }
+
+        async function editActivity(id) {
+            try {
+                const response = await apiGet(`/activities/${id}`);
+                if (response.code === 200) {
+                    const activity = response.data;
+                    document.getElementById('modalTitle').textContent = '编辑活动';
+                    document.getElementById('activityId').value = activity.id;
+                    document.getElementById('name').value = activity.name;
+                    document.getElementById('activityType').value = activity.activity_type;
+                    document.getElementById('description').value = activity.description || '';
+                    document.getElementById('displayPosition').value = activity.display_position;
+                    document.getElementById('maxParticipants').value = activity.max_participants || 0;
+                    document.getElementById('startTime').value = formatDateTimeLocal(activity.start_time);
+                    document.getElementById('endTime').value = formatDateTimeLocal(activity.end_time);
+                    document.getElementById('imageUrl').value = activity.image_url || '';
+                    document.getElementById('linkUrl').value = activity.link_url || '';
+                    document.getElementById('sortOrder').value = activity.sort_order || 0;
+                    document.getElementById('isActive').value = activity.is_active ? 'true' : 'false';
+                    new Modal('activityModal').show();
+                }
+            } catch (error) {
+                showToast('加载活动失败', 'error');
+            }
+        }
+
+        async function saveActivity() {
+            const id = document.getElementById('activityId').value;
+            const data = {
+                name: document.getElementById('name').value,
+                activity_type: document.getElementById('activityType').value,
+                description: document.getElementById('description').value,
+                display_position: document.getElementById('displayPosition').value,
+                max_participants: parseInt(document.getElementById('maxParticipants').value) || 0,
+                start_time: new Date(document.getElementById('startTime').value).toISOString(),
+                end_time: new Date(document.getElementById('endTime').value).toISOString(),
+                image_url: document.getElementById('imageUrl').value,
+                link_url: document.getElementById('linkUrl').value,
+                sort_order: parseInt(document.getElementById('sortOrder').value) || 0,
+                is_active: document.getElementById('isActive').value === 'true'
+            };
+
+            try {
+                let response;
+                if (id) {
+                    response = await apiPut(`/activities/${id}`, data);
+                } else {
+                    response = await apiPost('/activities', data);
+                }
+
+                if (response.code === 200) {
+                    showToast(id ? '活动已更新' : '活动已创建', 'success');
+                    hideModal();
+                    loadActivities(pagination.page, pagination.pageSize);
+                    loadStatistics();
+                } else {
+                    showToast(response.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                showToast('保存失败: ' + error.message, 'error');
+            }
+        }
+
+        async function toggleStatus(id) {
+            try {
+                const response = await apiPut(`/activities/${id}/toggle`);
+                if (response.code === 200) {
+                    showToast('状态已更新', 'success');
+                    loadActivities(pagination.page, pagination.pageSize);
+                    loadStatistics();
+                }
+            } catch (error) {
+                showToast('操作失败', 'error');
+            }
+        }
+
+        async function deleteActivity(id) {
+            if (!confirm('确定要删除这个活动吗？')) return;
+
+            try {
+                const response = await apiDelete(`/activities/${id}`);
+                if (response.code === 200) {
+                    showToast('活动已删除', 'success');
+                    loadActivities(pagination.page, pagination.pageSize);
+                    loadStatistics();
+                }
+            } catch (error) {
+                showToast('删除失败', 'error');
+            }
+        }
+
+        async function viewParticipants(activityId) {
+            try {
+                const response = await apiGet(`/activities/${activityId}/participants`);
+                if (response.code === 200) {
+                    const participants = response.data.list || [];
+                    renderParticipants(participants);
+                    new Modal('participantsModal').show();
+                }
+            } catch (error) {
+                showToast('加载参与者失败', 'error');
+            }
+        }
+
+        function renderParticipants(participants) {
+            if (participants.length === 0) {
+                document.getElementById('participantsContainer').innerHTML =
+                    '<div class="empty-state">暂无参与者</div>';
+                return;
+            }
+
+            const html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>客户名称</th>
+                            <th>参与时间</th>
+                            <th>奖励类型</th>
+                            <th>奖励金额</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${participants.map(p => `
+                            <tr>
+                                <td>${p.customer?.customer_name || '-'}</td>
+                                <td>${formatDateTime(p.participated_at)}</td>
+                                <td>${p.reward_type || '-'}</td>
+                                <td>${p.reward_amount ? '¥' + p.reward_amount : '-'}</td>
+                                <td>
+                                    <span class="badge badge-${p.reward_status === 'granted' ? 'success' : 'warning'}">
+                                        ${p.reward_status === 'granted' ? '已发放' : '待发放'}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('participantsContainer').innerHTML = html;
+        }
+
+        function hideModal() {
+            new Modal('activityModal').hide();
+        }
+
+        function hideParticipantsModal() {
+            new Modal('participantsModal').hide();
+        }
+
+        function formatDateTimeLocal(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            return date.toISOString().slice(0, 16);
+        }
+    </script>
+</body>
+</html>

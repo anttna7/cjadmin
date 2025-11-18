@@ -332,6 +332,72 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 				credits.GET("/statistics", middleware.RequirePermission("finance.read"), creditHandler.GetCreditStatistics)
 			}
 
+			// 营销管理（第20阶段）
+			marketingHandler := handler.NewMarketingHandler(database.GetDB())
+
+			// 活动管理
+			activities := authorized.Group("/activities")
+			activities.Use(middleware.TenantMiddleware())
+			{
+				activities.POST("", middleware.RequirePermission("activity.create"), marketingHandler.CreateActivity)
+				activities.GET("", middleware.RequirePermission("activity.view"), marketingHandler.ListActivities)
+				activities.GET("/active", marketingHandler.GetActiveActivities) // 前端展示用，无需特殊权限
+				activities.GET("/statistics", middleware.RequirePermission("activity.view"), marketingHandler.GetActivityStatistics)
+				activities.GET("/:id", middleware.RequirePermission("activity.view"), marketingHandler.GetActivity)
+				activities.PUT("/:id", middleware.RequirePermission("activity.update"), marketingHandler.UpdateActivity)
+				activities.DELETE("/:id", middleware.RequirePermission("activity.delete"), marketingHandler.DeleteActivity)
+				activities.PUT("/:id/toggle", middleware.RequirePermission("activity.update"), marketingHandler.ToggleActivityStatus)
+				activities.POST("/participate", middleware.RequirePermission("activity.view"), marketingHandler.ParticipateActivity)
+				activities.GET("/:id/participants", middleware.RequirePermission("activity.view"), marketingHandler.GetActivityParticipants)
+			}
+
+			// 横幅管理
+			banners := authorized.Group("/banners")
+			banners.Use(middleware.TenantMiddleware())
+			{
+				banners.POST("", middleware.RequirePermission("banner.create"), marketingHandler.CreateBanner)
+				banners.GET("", middleware.RequirePermission("banner.view"), marketingHandler.ListBanners)
+				banners.GET("/active", marketingHandler.GetActiveBanners) // 前端展示用
+				banners.GET("/statistics", middleware.RequirePermission("banner.view"), marketingHandler.GetBannerStatistics)
+				banners.GET("/:id", middleware.RequirePermission("banner.view"), marketingHandler.GetBanner)
+				banners.PUT("/:id", middleware.RequirePermission("banner.update"), marketingHandler.UpdateBanner)
+				banners.DELETE("/:id", middleware.RequirePermission("banner.delete"), marketingHandler.DeleteBanner)
+				banners.PUT("/:id/toggle", middleware.RequirePermission("banner.update"), marketingHandler.ToggleBannerStatus)
+				banners.POST("/:id/click", marketingHandler.RecordBannerClick) // 记录点击，无需权限
+			}
+
+			// 主题管理
+			themes := authorized.Group("/themes")
+			themes.Use(middleware.TenantMiddleware())
+			{
+				themes.POST("", middleware.RequirePermission("theme.create"), marketingHandler.CreateTheme)
+				themes.GET("", middleware.RequirePermission("theme.view"), marketingHandler.ListThemes)
+				themes.GET("/default", marketingHandler.GetDefaultTheme) // 前端获取当前主题
+				themes.GET("/statistics", middleware.RequirePermission("theme.view"), marketingHandler.GetThemeStatistics)
+				themes.GET("/:id", middleware.RequirePermission("theme.view"), marketingHandler.GetTheme)
+				themes.PUT("/:id", middleware.RequirePermission("theme.update"), marketingHandler.UpdateTheme)
+				themes.DELETE("/:id", middleware.RequirePermission("theme.delete"), marketingHandler.DeleteTheme)
+				themes.PUT("/:id/toggle", middleware.RequirePermission("theme.update"), marketingHandler.ToggleThemeStatus)
+				themes.PUT("/:id/default", middleware.RequirePermission("theme.switch"), marketingHandler.SetDefaultTheme)
+				themes.POST("/from-template", middleware.RequirePermission("theme.create"), marketingHandler.CreateThemeFromTemplate)
+			}
+
+			// 自定义报表管理
+			reports := authorized.Group("/reports")
+			reports.Use(middleware.TenantMiddleware())
+			{
+				reports.POST("", middleware.RequirePermission("report.create"), marketingHandler.CreateReport)
+				reports.GET("", middleware.RequirePermission("report.view"), marketingHandler.ListReports)
+				reports.GET("/data-sources", middleware.RequirePermission("report.view"), marketingHandler.GetDataSources)
+				reports.GET("/fields/:table", middleware.RequirePermission("report.view"), marketingHandler.GetTableFields)
+				reports.GET("/statistics", middleware.RequirePermission("report.view"), marketingHandler.GetReportStatistics)
+				reports.GET("/:id", middleware.RequirePermission("report.view"), marketingHandler.GetReport)
+				reports.PUT("/:id", middleware.RequirePermission("report.update"), marketingHandler.UpdateReport)
+				reports.DELETE("/:id", middleware.RequirePermission("report.delete"), marketingHandler.DeleteReport)
+				reports.POST("/:id/execute", middleware.RequirePermission("report.execute"), marketingHandler.ExecuteReport)
+				reports.GET("/:id/history", middleware.RequirePermission("report.view"), marketingHandler.GetReportExecutionHistory)
+			}
+
 			// 文件上传管理
 			uploadHandler := handler.NewUploadHandler()
 			files := authorized.Group("/files")
