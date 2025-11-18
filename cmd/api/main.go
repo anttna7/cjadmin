@@ -98,6 +98,9 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 			public.GET("/theme", publicHandler.GetPublicTheme)
 			public.GET("/activities", publicHandler.GetPublicActivities)
 			public.GET("/banners", publicHandler.GetPublicBanners)
+			public.POST("/verify-customer", publicHandler.VerifyCustomer)
+			public.POST("/get-payment-account", publicHandler.GetPaymentAccount)
+			public.POST("/submit-recharge", publicHandler.SubmitRecharge)
 		}
 
 		// 需要认证的路由

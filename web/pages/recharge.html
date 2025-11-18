@@ -42,127 +42,71 @@
             padding: 20px;
         }
 
-        /* 横幅轮播 */
-        .banner-carousel {
+        /* 步骤指示器 */
+        .steps {
+            display: flex;
             margin-bottom: 20px;
-            border-radius: 8px;
-            overflow: hidden;
-            display: none;
-        }
-        .banner-carousel.active {
-            display: block;
-        }
-        .banner-slide {
-            position: relative;
-        }
-        .banner-slide img {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-            cursor: pointer;
-        }
-        .banner-title {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            padding: 10px;
-            font-size: 14px;
-        }
-
-        /* 活动区域 */
-        .activities-section {
-            margin-bottom: 20px;
-            display: none;
-        }
-        .activities-section.active {
-            display: block;
-        }
-        .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: #333;
-        }
-        .activity-card {
             background: white;
             border-radius: 8px;
             padding: 15px;
-            margin-bottom: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-left: 4px solid var(--accent-color);
         }
-        .activity-card h4 {
-            font-size: 15px;
-            color: #333;
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+        .step::after {
+            content: '';
+            position: absolute;
+            top: 15px;
+            right: -50%;
+            width: 100%;
+            height: 2px;
+            background: #e8e8e8;
+        }
+        .step:last-child::after {
+            display: none;
+        }
+        .step.active::after {
+            background: var(--primary-color);
+        }
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e8e8e8;
+            color: #999;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
             margin-bottom: 8px;
         }
-        .activity-card p {
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 8px;
+        .step.active .step-number {
+            background: var(--primary-color);
+            color: white;
         }
-        .activity-time {
+        .step.completed .step-number {
+            background: var(--success-color);
+            color: white;
+        }
+        .step-title {
             font-size: 12px;
             color: #999;
         }
-        .activity-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            background: var(--accent-color);
-            color: white;
-            font-size: 11px;
-            border-radius: 3px;
-            margin-left: 8px;
+        .step.active .step-title {
+            color: var(--primary-color);
+            font-weight: 500;
         }
 
-        /* 账户余额卡片 */
-        .balance-card {
+        /* 表单卡片 */
+        .form-card {
             background: white;
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .balance-card h3 {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 10px;
-        }
-        .balance-amount {
-            font-size: 32px;
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-        .balance-detail {
-            display: flex;
-            gap: 20px;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #f0f0f0;
-        }
-        .balance-item {
-            flex: 1;
-        }
-        .balance-item label {
-            font-size: 12px;
-            color: #999;
-        }
-        .balance-item span {
-            display: block;
-            font-size: 16px;
-            font-weight: 500;
-            color: #333;
-            margin-top: 4px;
-        }
-
-        /* 充值表单 */
-        .recharge-form {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .form-title {
@@ -171,6 +115,124 @@
             margin-bottom: 20px;
             color: #333;
         }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        /* 公司信息卡片 */
+        .company-info {
+            background: #f6ffed;
+            border: 1px solid #b7eb8f;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .company-info h4 {
+            color: #389e0d;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .company-info p {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        /* 支付类型选择 */
+        .payment-type-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .payment-type-btn {
+            padding: 20px;
+            border: 2px solid #e8e8e8;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .payment-type-btn:hover {
+            border-color: var(--primary-color);
+        }
+        .payment-type-btn.active {
+            border-color: var(--primary-color);
+            background: rgba(24, 144, 255, 0.1);
+        }
+        .payment-type-btn .icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .payment-type-btn .title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        .payment-type-btn .desc {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        /* 收款账户信息 */
+        .account-info {
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .account-info h4 {
+            color: #1890ff;
+            font-size: 15px;
+            margin-bottom: 15px;
+        }
+        .account-detail {
+            margin-bottom: 12px;
+        }
+        .account-detail label {
+            font-size: 12px;
+            color: #666;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .account-detail span {
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+        }
+        .copy-btn {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 3px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        /* 金额选择 */
         .amount-options {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -203,77 +265,71 @@
             color: var(--accent-color);
             margin-top: 4px;
         }
-        .custom-amount {
-            margin-bottom: 20px;
+
+        /* 返点信息 */
+        .rebate-info {
+            background: #fff7e6;
+            border: 1px solid #ffd591;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
         }
-        .custom-amount label {
-            display: block;
+        .rebate-info h4 {
+            color: #d48806;
             font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .rebate-info p {
+            font-size: 13px;
             color: #666;
-            margin-bottom: 8px;
         }
-        .custom-amount input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #d9d9d9;
+        .rebate-amount {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        /* 按钮 */
+        .btn {
+            padding: 12px 24px;
             border-radius: 6px;
-            font-size: 16px;
-        }
-        .custom-amount input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-        }
-        .payment-methods {
-            margin-bottom: 20px;
-        }
-        .payment-methods label {
-            display: block;
             font-size: 14px;
-            color: #666;
-            margin-bottom: 8px;
-        }
-        .payment-option {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            border: 2px solid #e8e8e8;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .payment-option:hover {
-            border-color: var(--primary-color);
-        }
-        .payment-option.active {
-            border-color: var(--primary-color);
-            background: rgba(24, 144, 255, 0.1);
-        }
-        .payment-option input {
-            margin-right: 10px;
-        }
-        .payment-option span {
-            font-size: 14px;
-            color: #333;
-        }
-        .submit-btn {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.2s;
+            transition: all 0.2s;
+            border: none;
         }
-        .submit-btn:hover {
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+        }
+        .btn-primary:hover {
             opacity: 0.9;
         }
-        .submit-btn:disabled {
+        .btn-primary:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+        .btn-default {
+            background: white;
+            color: #666;
+            border: 1px solid #d9d9d9;
+        }
+        .btn-default:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+        .btn-block {
+            width: 100%;
+            display: block;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn-group .btn {
+            flex: 1;
         }
 
         /* 消息提示 */
@@ -296,6 +352,52 @@
             color: #389e0d;
             display: block;
         }
+
+        /* 隐藏步骤 */
+        .step-content {
+            display: none;
+        }
+        .step-content.active {
+            display: block;
+        }
+
+        /* 横幅和活动区域 */
+        .banner-carousel {
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+        }
+        .banner-carousel.active {
+            display: block;
+        }
+        .banner-slide img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+        .activities-section {
+            margin-bottom: 20px;
+            display: none;
+        }
+        .activities-section.active {
+            display: block;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        .activity-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--accent-color);
+        }
     </style>
 </head>
 <body>
@@ -309,7 +411,22 @@
         <div id="bannerCarousel" class="banner-carousel">
             <div class="banner-slide">
                 <img id="bannerImage" src="" alt="活动横幅">
-                <div id="bannerTitle" class="banner-title"></div>
+            </div>
+        </div>
+
+        <!-- 步骤指示器 -->
+        <div class="steps">
+            <div class="step active" id="step1Indicator">
+                <div class="step-number">1</div>
+                <div class="step-title">验证账户</div>
+            </div>
+            <div class="step" id="step2Indicator">
+                <div class="step-number">2</div>
+                <div class="step-title">选择方式</div>
+            </div>
+            <div class="step" id="step3Indicator">
+                <div class="step-number">3</div>
+                <div class="step-title">确认充值</div>
             </div>
         </div>
 
@@ -319,94 +436,147 @@
             <div id="activitiesList"></div>
         </div>
 
-        <!-- 账户余额 -->
-        <div class="balance-card">
-            <h3>账户余额</h3>
-            <div class="balance-amount">￥<span id="totalBalance">0.00</span></div>
-            <div class="balance-detail">
-                <div class="balance-item">
-                    <label>资金余额</label>
-                    <span id="fundBalance">￥0.00</span>
+        <!-- 步骤1：验证账户 -->
+        <div class="step-content active" id="step1Content">
+            <div class="form-card">
+                <div class="form-title">请输入公司名称</div>
+                <div id="step1Message" class="message"></div>
+                <div class="form-group">
+                    <label>公司名称 <span style="color:#f5222d">*</span></label>
+                    <input type="text" id="companyName" placeholder="请输入完整的公司名称" required>
                 </div>
-                <div class="balance-item">
-                    <label>赠送余额</label>
-                    <span id="giftBalance">￥0.00</span>
+                <button class="btn btn-primary btn-block" onclick="verifyCompany()">
+                    验证账户
+                </button>
+            </div>
+        </div>
+
+        <!-- 步骤2：选择支付方式 -->
+        <div class="step-content" id="step2Content">
+            <div class="form-card">
+                <div class="form-title">选择打款方式</div>
+                <div id="step2Message" class="message"></div>
+
+                <!-- 已验证的公司信息 -->
+                <div class="company-info" id="verifiedCompanyInfo">
+                    <h4>已验证账户</h4>
+                    <p><strong>公司名称：</strong><span id="displayCompanyName"></span></p>
+                    <p><strong>账户状态：</strong><span style="color:#52c41a">正常</span></p>
                 </div>
-                <div class="balance-item">
-                    <label>授信额度</label>
-                    <span id="creditLimit">￥0.00</span>
+
+                <div class="payment-type-options">
+                    <div class="payment-type-btn" data-type="public" onclick="selectPaymentType(this, 'public')">
+                        <div class="icon">🏛️</div>
+                        <div class="title">对公打款</div>
+                        <div class="desc">转账至公司对公账户</div>
+                    </div>
+                    <div class="payment-type-btn" data-type="private" onclick="selectPaymentType(this, 'private')">
+                        <div class="icon">👤</div>
+                        <div class="title">对私打款</div>
+                        <div class="desc">转账至个人银行账户</div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-default" onclick="goToStep(1)">上一步</button>
+                    <button class="btn btn-primary" id="step2NextBtn" onclick="getPaymentAccount()" disabled>
+                        下一步
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- 充值表单 -->
-        <div class="recharge-form">
-            <div class="form-title">选择充值金额</div>
-            <div id="messageBox" class="message"></div>
+        <!-- 步骤3：确认充值 -->
+        <div class="step-content" id="step3Content">
+            <div class="form-card">
+                <div class="form-title">确认充值信息</div>
+                <div id="step3Message" class="message"></div>
 
-            <div class="amount-options">
-                <div class="amount-btn" data-amount="100">
-                    <div class="value">100</div>
+                <!-- 收款账户信息 -->
+                <div class="account-info" id="paymentAccountInfo">
+                    <h4>收款账户信息</h4>
+                    <div class="account-detail">
+                        <label>账户名称</label>
+                        <span id="accountHolder">-</span>
+                        <button class="copy-btn" onclick="copyText('accountHolder')">复制</button>
+                    </div>
+                    <div class="account-detail">
+                        <label>银行名称</label>
+                        <span id="bankName">-</span>
+                    </div>
+                    <div class="account-detail">
+                        <label>银行账号</label>
+                        <span id="accountNumber">-</span>
+                        <button class="copy-btn" onclick="copyText('accountNumber')">复制</button>
+                    </div>
+                    <div class="account-detail" id="bankBranchRow" style="display:none">
+                        <label>开户支行</label>
+                        <span id="bankBranch">-</span>
+                    </div>
                 </div>
-                <div class="amount-btn" data-amount="500">
-                    <div class="value">500</div>
-                    <div class="gift">送50</div>
+
+                <!-- 金额选择 -->
+                <div class="form-title" style="margin-top:20px">选择充值金额</div>
+                <div class="amount-options" id="amountOptions">
+                    <!-- 动态生成 -->
                 </div>
-                <div class="amount-btn" data-amount="1000">
-                    <div class="value">1000</div>
-                    <div class="gift">送120</div>
+
+                <div class="form-group">
+                    <label>或输入自定义金额</label>
+                    <input type="number" id="customAmount" placeholder="请输入充值金额" min="1" onchange="updateRebateInfo()">
                 </div>
-                <div class="amount-btn" data-amount="2000">
-                    <div class="value">2000</div>
-                    <div class="gift">送280</div>
+
+                <!-- 返点信息 -->
+                <div class="rebate-info" id="rebateInfo" style="display:none">
+                    <h4>返点优惠</h4>
+                    <p>充值金额：￥<span id="rechargeAmount">0</span></p>
+                    <p>返点比例：<span id="rebateRate">0</span>%</p>
+                    <p>赠送金额：<span class="rebate-amount" id="giftAmount">￥0</span></p>
+                    <p style="margin-top:8px;font-weight:500">实际到账：￥<span id="totalAmount">0</span></p>
                 </div>
-                <div class="amount-btn" data-amount="5000">
-                    <div class="value">5000</div>
-                    <div class="gift">送800</div>
-                </div>
-                <div class="amount-btn" data-amount="10000">
-                    <div class="value">10000</div>
-                    <div class="gift">送1800</div>
+
+                <div class="btn-group">
+                    <button class="btn btn-default" onclick="goToStep(2)">上一步</button>
+                    <button class="btn btn-primary" id="submitBtn" onclick="submitRecharge()">
+                        确认充值
+                    </button>
                 </div>
             </div>
-
-            <div class="custom-amount">
-                <label>或输入自定义金额</label>
-                <input type="number" id="customAmount" placeholder="请输入充值金额" min="1">
-            </div>
-
-            <div class="payment-methods">
-                <label>选择支付方式</label>
-                <div id="paymentMethodsList"></div>
-            </div>
-
-            <button type="button" class="submit-btn" id="submitBtn" onclick="submitRecharge()">
-                立即充值
-            </button>
         </div>
     </div>
 
     <script>
+        // 全局变量
+        let currentStep = 1;
+        let verifiedCustomer = null;
+        let selectedPaymentType = '';
+        let selectedAccount = null;
         let selectedAmount = 0;
-        let selectedPaymentMethod = '';
-        const token = localStorage.getItem('token');
+        let rebateConfig = null;
 
-        // API请求封装
-        async function apiGet(url) {
-            const response = await fetch('/api' + url, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+        // 从URL获取租户标识
+        const urlParams = new URLSearchParams(window.location.search);
+        const tenantCode = urlParams.get('tenant') || '';
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            await Promise.all([
+                loadTheme(),
+                loadActivities(),
+                loadBanners()
+            ]);
+        });
+
+        // API请求封装（公共接口，无需认证）
+        async function apiPublicGet(url) {
+            const response = await fetch('/api/public' + url);
             return response.json();
         }
 
-        async function apiPost(url, data) {
-            const response = await fetch('/api' + url, {
+        async function apiPublicPost(url, data) {
+            const response = await fetch('/api/public' + url, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(data)
@@ -414,44 +584,11 @@
             return response.json();
         }
 
-        // 页面初始化
-        document.addEventListener('DOMContentLoaded', async function() {
-            // 检查登录状态
-            if (!token) {
-                window.location.href = '/login';
-                return;
-            }
-
-            // 加载数据
-            await Promise.all([
-                loadTheme(),
-                loadBalance(),
-                loadActivities(),
-                loadBanners(),
-                loadPaymentMethods()
-            ]);
-
-            // 绑定金额按钮事件
-            document.querySelectorAll('.amount-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    selectedAmount = parseInt(this.dataset.amount);
-                    document.getElementById('customAmount').value = '';
-                });
-            });
-
-            // 自定义金额输入
-            document.getElementById('customAmount').addEventListener('input', function() {
-                document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
-                selectedAmount = parseFloat(this.value) || 0;
-            });
-        });
-
         // 加载主题
         async function loadTheme() {
+            if (!tenantCode) return;
             try {
-                const response = await apiGet('/themes/default');
+                const response = await apiPublicGet(`/theme?tenant=${tenantCode}`);
                 if (response.code === 200 && response.data) {
                     applyTheme(response.data);
                 }
@@ -469,52 +606,23 @@
             if (theme.secondary_color) {
                 root.style.setProperty('--secondary-color', theme.secondary_color);
             }
-            if (theme.accent_color) {
-                root.style.setProperty('--accent-color', theme.accent_color);
-            }
             if (theme.welcome_message) {
                 document.getElementById('welcomeMessage').textContent = theme.welcome_message;
             }
         }
 
-        // 加载账户余额
-        async function loadBalance() {
-            try {
-                const response = await apiGet('/customer/account');
-                if (response.code === 200 && response.data) {
-                    const account = response.data;
-                    const total = (parseFloat(account.fund_balance) || 0) +
-                                  (parseFloat(account.gift_balance) || 0);
-                    document.getElementById('totalBalance').textContent = total.toFixed(2);
-                    document.getElementById('fundBalance').textContent = '￥' + (parseFloat(account.fund_balance) || 0).toFixed(2);
-                    document.getElementById('giftBalance').textContent = '￥' + (parseFloat(account.gift_balance) || 0).toFixed(2);
-                    document.getElementById('creditLimit').textContent = '￥' + (parseFloat(account.credit_limit) || 0).toFixed(2);
-                }
-            } catch (error) {
-                console.log('余额加载失败');
-            }
-        }
-
         // 加载活动
         async function loadActivities() {
+            if (!tenantCode) return;
             try {
-                const response = await apiGet('/activities/active?position=recharge');
+                const response = await apiPublicGet(`/activities?tenant=${tenantCode}&position=recharge`);
                 if (response.code === 200 && response.data && response.data.length > 0) {
                     const section = document.getElementById('activitiesSection');
                     const list = document.getElementById('activitiesList');
 
                     let html = '';
                     response.data.forEach(activity => {
-                        const endDate = new Date(activity.end_time).toLocaleDateString('zh-CN');
-                        html += `
-                            <div class="activity-card">
-                                <h4>${activity.name}
-                                    <span class="activity-badge">${getActivityTypeText(activity.activity_type)}</span>
-                                </h4>
-                                <p>${activity.description || ''}</p>
-                                <div class="activity-time">活动截止：${endDate}</div>
-                            </div>
-                        `;
+                        html += `<div class="activity-card"><h4>${activity.name}</h4><p>${activity.description || ''}</p></div>`;
                     });
 
                     list.innerHTML = html;
@@ -525,37 +633,15 @@
             }
         }
 
-        function getActivityTypeText(type) {
-            const types = {
-                'promotion': '促销',
-                'discount': '折扣',
-                'gift': '赠送',
-                'points': '积分',
-                'lottery': '抽奖'
-            };
-            return types[type] || type;
-        }
-
         // 加载横幅
         async function loadBanners() {
+            if (!tenantCode) return;
             try {
-                const response = await apiGet('/banners/active?position=recharge');
+                const response = await apiPublicGet(`/banners?tenant=${tenantCode}&position=recharge`);
                 if (response.code === 200 && response.data && response.data.length > 0) {
                     const carousel = document.getElementById('bannerCarousel');
-                    const banner = response.data[0]; // 显示第一个横幅
-
+                    const banner = response.data[0];
                     document.getElementById('bannerImage').src = banner.image_url;
-                    document.getElementById('bannerTitle').textContent = banner.title;
-
-                    // 点击横幅
-                    document.getElementById('bannerImage').onclick = function() {
-                        // 记录点击
-                        apiPost(`/banners/${banner.id}/click`, {});
-                        if (banner.link_url) {
-                            window.open(banner.link_url, '_blank');
-                        }
-                    };
-
                     carousel.classList.add('active');
                 }
             } catch (error) {
@@ -563,67 +649,204 @@
             }
         }
 
-        // 加载支付方式
-        async function loadPaymentMethods() {
+        // 显示消息
+        function showMessage(stepNum, text, type) {
+            const box = document.getElementById(`step${stepNum}Message`);
+            box.textContent = text;
+            box.className = `message ${type}`;
+        }
+
+        // 步骤1：验证公司
+        async function verifyCompany() {
+            const companyName = document.getElementById('companyName').value.trim();
+
+            if (!companyName) {
+                showMessage(1, '请输入公司名称', 'error');
+                return;
+            }
+
+            if (!tenantCode) {
+                showMessage(1, '缺少租户标识，请检查访问链接', 'error');
+                return;
+            }
+
             try {
-                const response = await apiGet('/payment-apis?status=active');
-                const list = document.getElementById('paymentMethodsList');
+                const response = await apiPublicPost('/verify-customer', {
+                    tenant_code: tenantCode,
+                    company_name: companyName
+                });
 
-                if (response.code === 200 && response.data && response.data.length > 0) {
-                    let html = '';
-                    response.data.forEach((method, index) => {
-                        const checked = index === 0 ? 'checked' : '';
-                        const activeClass = index === 0 ? 'active' : '';
-                        if (index === 0) selectedPaymentMethod = method.api_code;
-
-                        html += `
-                            <div class="payment-option ${activeClass}" onclick="selectPayment(this, '${method.api_code}')">
-                                <input type="radio" name="payment" ${checked}>
-                                <span>${method.api_name}</span>
-                            </div>
-                        `;
-                    });
-                    list.innerHTML = html;
+                if (response.code === 200 && response.data) {
+                    verifiedCustomer = response.data;
+                    document.getElementById('displayCompanyName').textContent = verifiedCustomer.company_name;
+                    goToStep(2);
                 } else {
-                    list.innerHTML = `
-                        <div class="payment-option active" onclick="selectPayment(this, 'bank')">
-                            <input type="radio" name="payment" checked>
-                            <span>银行转账</span>
-                        </div>
-                    `;
-                    selectedPaymentMethod = 'bank';
+                    showMessage(1, response.message || '账户验证失败', 'error');
                 }
             } catch (error) {
-                console.log('支付方式加载失败');
+                showMessage(1, '网络错误，请重试', 'error');
             }
         }
 
-        // 选择支付方式
-        function selectPayment(element, code) {
-            document.querySelectorAll('.payment-option').forEach(el => {
-                el.classList.remove('active');
-                el.querySelector('input').checked = false;
+        // 选择支付类型
+        function selectPaymentType(element, type) {
+            document.querySelectorAll('.payment-type-btn').forEach(btn => {
+                btn.classList.remove('active');
             });
             element.classList.add('active');
-            element.querySelector('input').checked = true;
-            selectedPaymentMethod = code;
+            selectedPaymentType = type;
+            document.getElementById('step2NextBtn').disabled = false;
         }
 
-        // 显示消息
-        function showMessage(text, type) {
-            const box = document.getElementById('messageBox');
-            box.textContent = text;
-            box.className = `message ${type}`;
+        // 步骤2：获取收款账户
+        async function getPaymentAccount() {
+            if (!selectedPaymentType) {
+                showMessage(2, '请选择打款方式', 'error');
+                return;
+            }
+
+            try {
+                const response = await apiPublicPost('/get-payment-account', {
+                    tenant_code: tenantCode,
+                    customer_id: verifiedCustomer.id,
+                    account_type: selectedPaymentType
+                });
+
+                if (response.code === 200 && response.data) {
+                    selectedAccount = response.data.account;
+                    rebateConfig = response.data.rebate_config;
+
+                    // 显示收款账户信息
+                    document.getElementById('accountHolder').textContent = selectedAccount.account_holder || '-';
+                    document.getElementById('bankName').textContent = selectedAccount.bank_name || '-';
+                    document.getElementById('accountNumber').textContent = selectedAccount.account_number || '-';
+
+                    if (selectedAccount.bank_branch) {
+                        document.getElementById('bankBranch').textContent = selectedAccount.bank_branch;
+                        document.getElementById('bankBranchRow').style.display = 'block';
+                    }
+
+                    // 生成金额选项（根据返点配置）
+                    generateAmountOptions();
+
+                    goToStep(3);
+                } else {
+                    showMessage(2, response.message || '获取收款账户失败', 'error');
+                }
+            } catch (error) {
+                showMessage(2, '网络错误，请重试', 'error');
+            }
+        }
+
+        // 生成金额选项
+        function generateAmountOptions() {
+            const container = document.getElementById('amountOptions');
+            const amounts = [100, 500, 1000, 2000, 5000, 10000];
+
+            let html = '';
+            amounts.forEach(amount => {
+                let giftHtml = '';
+                if (rebateConfig && rebateConfig.rebate_rate > 0) {
+                    const gift = Math.floor(amount * rebateConfig.rebate_rate / 100);
+                    if (gift > 0) {
+                        giftHtml = `<div class="gift">送${gift}</div>`;
+                    }
+                }
+                html += `
+                    <div class="amount-btn" data-amount="${amount}" onclick="selectAmount(this, ${amount})">
+                        <div class="value">${amount}</div>
+                        ${giftHtml}
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // 选择金额
+        function selectAmount(element, amount) {
+            document.querySelectorAll('.amount-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            element.classList.add('active');
+            selectedAmount = amount;
+            document.getElementById('customAmount').value = '';
+            updateRebateInfo();
+        }
+
+        // 更新返点信息
+        function updateRebateInfo() {
+            const customAmount = parseFloat(document.getElementById('customAmount').value) || 0;
+            const amount = customAmount > 0 ? customAmount : selectedAmount;
+
+            if (amount <= 0) {
+                document.getElementById('rebateInfo').style.display = 'none';
+                return;
+            }
+
+            selectedAmount = amount;
+            document.getElementById('rechargeAmount').textContent = amount.toFixed(2);
+
+            let rebateRate = 0;
+            let giftAmount = 0;
+
+            if (rebateConfig) {
+                // 根据打款类型获取返点比例
+                if (selectedPaymentType === 'public') {
+                    rebateRate = rebateConfig.public_rebate_rate || 0;
+                } else {
+                    rebateRate = rebateConfig.private_rebate_rate || 0;
+                }
+                giftAmount = amount * rebateRate / 100;
+            }
+
+            document.getElementById('rebateRate').textContent = rebateRate;
+            document.getElementById('giftAmount').textContent = '￥' + giftAmount.toFixed(2);
+            document.getElementById('totalAmount').textContent = (amount + giftAmount).toFixed(2);
+            document.getElementById('rebateInfo').style.display = 'block';
+        }
+
+        // 复制文本
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('已复制到剪贴板');
+            }).catch(() => {
+                // 兼容旧浏览器
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('已复制到剪贴板');
+            });
+        }
+
+        // 步骤切换
+        function goToStep(step) {
+            currentStep = step;
+
+            // 更新步骤指示器
+            for (let i = 1; i <= 3; i++) {
+                const indicator = document.getElementById(`step${i}Indicator`);
+                const content = document.getElementById(`step${i}Content`);
+
+                indicator.classList.remove('active', 'completed');
+                content.classList.remove('active');
+
+                if (i < step) {
+                    indicator.classList.add('completed');
+                } else if (i === step) {
+                    indicator.classList.add('active');
+                    content.classList.add('active');
+                }
+            }
         }
 
         // 提交充值
         async function submitRecharge() {
             if (selectedAmount <= 0) {
-                showMessage('请选择或输入充值金额', 'error');
-                return;
-            }
-            if (!selectedPaymentMethod) {
-                showMessage('请选择支付方式', 'error');
+                showMessage(3, '请选择或输入充值金额', 'error');
                 return;
             }
 
@@ -632,27 +855,31 @@
             btn.textContent = '处理中...';
 
             try {
-                const response = await apiPost('/recharges', {
+                const response = await apiPublicPost('/submit-recharge', {
+                    tenant_code: tenantCode,
+                    customer_id: verifiedCustomer.id,
+                    account_id: selectedAccount.id,
                     amount: selectedAmount,
-                    payment_method: selectedPaymentMethod
+                    payment_type: selectedPaymentType
                 });
 
                 if (response.code === 200) {
-                    showMessage('充值订单创建成功，请完成支付', 'success');
-                    // 如果有支付链接，跳转
-                    if (response.data && response.data.payment_url) {
-                        setTimeout(() => {
-                            window.location.href = response.data.payment_url;
-                        }, 1500);
+                    showMessage(3, '充值订单创建成功！请按照上方账户信息完成转账，转账后系统将自动处理入账。', 'success');
+                    btn.textContent = '已提交';
+
+                    // 显示订单信息
+                    if (response.data && response.data.order_no) {
+                        alert(`充值订单已创建\n订单号：${response.data.order_no}\n\n请按照页面显示的收款账户信息完成转账。转账时请在备注中填写订单号，以便快速入账。`);
                     }
                 } else {
-                    showMessage(response.message || '充值失败', 'error');
+                    showMessage(3, response.message || '充值失败', 'error');
+                    btn.disabled = false;
+                    btn.textContent = '确认充值';
                 }
             } catch (error) {
-                showMessage('网络错误，请重试', 'error');
-            } finally {
+                showMessage(3, '网络错误，请重试', 'error');
                 btn.disabled = false;
-                btn.textContent = '立即充值';
+                btn.textContent = '确认充值';
             }
         }
     </script>
