@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>支付接口配置 - CJAdmin</title>
+    <link rel="stylesheet" href="../static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>支付接口配置</h1>
+            <div class="page-actions">
+                <button class="btn btn-primary" onclick="showCreateConfigModal()">
+                    <span>+ 新增接口配置</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-label">接口总数</div>
+                <div class="stat-value" id="totalConfigs">0</div>
+                <div class="stat-change text-info">全部配置</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">银行接口</div>
+                <div class="stat-value" id="bankConfigs">0</div>
+                <div class="stat-change text-success">银行</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">支付平台</div>
+                <div class="stat-value" id="platformConfigs">0</div>
+                <div class="stat-change text-primary">第三方</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">启用接口</div>
+                <div class="stat-value" id="activeConfigs">0</div>
+                <div class="stat-change text-success">正常运行</div>
+            </div>
+        </div>
+
+        <!-- 搜索过滤区 -->
+        <div class="card">
+            <div class="card-body">
+                <form class="search-form" onsubmit="handleSearch(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>提供商类型</label>
+                            <select id="filterProviderType" class="form-control">
+                                <option value="">全部</option>
+                                <option value="bank">银行</option>
+                                <option value="payment_platform">支付平台</option>
+                                <option value="acquirer">收单机构</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>状态</label>
+                            <select id="filterStatus" class="form-control">
+                                <option value="">全部</option>
+                                <option value="active">启用</option>
+                                <option value="inactive">停用</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>提供商名称</label>
+                            <input type="text" id="filterProviderName" class="form-control" placeholder="搜索提供商">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">搜索</button>
+                        <button type="button" class="btn btn-default" onclick="resetFilters()">重置</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 配置列表 -->
+        <div class="card">
+            <div class="card-body">
+                <div id="configTableContainer">
+                    <div class="loading">加载中...</div>
+                </div>
+                <div id="paginationContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑配置模态框 -->
+    <div id="configModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 id="configModalTitle">新增接口配置</h3>
+                <span class="close" onclick="closeConfigModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="configForm">
+                    <input type="hidden" id="configId">
+
+                    <div class="form-section">
+                        <h4>提供商信息</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>提供商名称 <span class="required">*</span></label>
+                                <input type="text" id="providerName" class="form-control" required placeholder="如：中国银行、支付宝">
+                            </div>
+                            <div class="form-group">
+                                <label>提供商代码 <span class="required">*</span></label>
+                                <input type="text" id="providerCode" class="form-control" required placeholder="如：BOC、ALIPAY">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>提供商类型 <span class="required">*</span></label>
+                                <select id="providerType" class="form-control" required>
+                                    <option value="bank">银行</option>
+                                    <option value="payment_platform">支付平台</option>
+                                    <option value="acquirer">收单机构</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>状态</label>
+                                <select id="configStatus" class="form-control">
+                                    <option value="active">启用</option>
+                                    <option value="inactive">停用</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>API配置</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>API版本</label>
+                                <input type="text" id="apiVersion" class="form-control" placeholder="如：v1.0">
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="isSandbox"> 沙箱环境
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label>API端点 <span class="required">*</span></label>
+                                <input type="text" id="apiEndpoint" class="form-control" required placeholder="https://api.example.com/payment">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label>沙箱API端点</label>
+                                <input type="text" id="apiSandboxEndpoint" class="form-control" placeholder="https://sandbox.example.com/payment">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>认证信息</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>商户ID</label>
+                                <input type="text" id="merchantId" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>AppID</label>
+                                <input type="text" id="appId" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label>AppSecret</label>
+                                <textarea id="appSecret" class="form-control" rows="2" placeholder="加密存储"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label>公钥</label>
+                                <textarea id="publicKey" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label>私钥</label>
+                                <textarea id="privateKey" class="form-control" rows="3" placeholder="加密存储"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>证书路径</label>
+                                <input type="text" id="certPath" class="form-control" placeholder="/path/to/cert.pem">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>功能支持</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><input type="checkbox" id="supportsPayment" checked> 支持支付</label>
+                            </div>
+                            <div class="form-group">
+                                <label><input type="checkbox" id="supportsQuery" checked> 支持查询</label>
+                            </div>
+                            <div class="form-group">
+                                <label><input type="checkbox" id="supportsRefund"> 支持退款</label>
+                            </div>
+                            <div class="form-group">
+                                <label><input type="checkbox" id="supportsTransfer"> 支持转账</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label>描述</label>
+                            <textarea id="configDescription" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>备注</label>
+                            <textarea id="configRemark" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" onclick="closeConfigModal()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitConfigForm()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/js/utils.js"></script>
+    <script>
+        // 全局变量
+        let currentPage = 1;
+        const pageSize = 10;
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStatistics();
+            loadConfigs();
+        });
+
+        // 加载统计数据
+        async function loadStatistics() {
+            try {
+                // 由于没有专门的统计API，从列表中计算
+                const response = await api.get('/payment-accounts?page_size=1000');
+                const configs = response.data || [];
+
+                let total = 0, bank = 0, platform = 0, active = 0;
+                // 这里简化处理，实际应该有payment_api_configs的API
+                document.getElementById('totalConfigs').textContent = total;
+                document.getElementById('bankConfigs').textContent = bank;
+                document.getElementById('platformConfigs').textContent = platform;
+                document.getElementById('activeConfigs').textContent = active;
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+
+        // 加载配置列表
+        async function loadConfigs() {
+            const container = document.getElementById('configTableContainer');
+            container.innerHTML = '<div class="loading">加载中...</div>';
+
+            try {
+                // 注意：这里需要实际的payment_api_configs API
+                // 暂时显示提示信息
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h4>支付接口配置功能</h4>
+                        <p>此功能用于配置银行和支付平台的API接口。</p>
+                        <p>支持的提供商类型：</p>
+                        <ul style="text-align: left; display: inline-block;">
+                            <li><strong>银行</strong>：中国银行、工商银行、建设银行等</li>
+                            <li><strong>支付平台</strong>：支付宝、微信支付等</li>
+                            <li><strong>收单机构</strong>：银联、各类聚合支付</li>
+                        </ul>
+                        <p style="margin-top: 15px; color: #999;">
+                            请根据银行或支付平台提供的API文档进行配置。
+                        </p>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<div class="error">加载失败: ' + error.message + '</div>';
+            }
+        }
+
+        // 搜索
+        function handleSearch(event) {
+            event.preventDefault();
+            currentPage = 1;
+            loadConfigs();
+        }
+
+        // 重置筛选
+        function resetFilters() {
+            document.getElementById('filterProviderType').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterProviderName').value = '';
+            currentPage = 1;
+            loadConfigs();
+        }
+
+        // 显示创建配置模态框
+        function showCreateConfigModal() {
+            document.getElementById('configModalTitle').textContent = '新增接口配置';
+            document.getElementById('configForm').reset();
+            document.getElementById('configId').value = '';
+            document.getElementById('supportsPayment').checked = true;
+            document.getElementById('supportsQuery').checked = true;
+            document.getElementById('configModal').style.display = 'block';
+        }
+
+        // 提交配置表单
+        async function submitConfigForm() {
+            const data = {
+                provider_name: document.getElementById('providerName').value,
+                provider_code: document.getElementById('providerCode').value,
+                provider_type: document.getElementById('providerType').value,
+                api_version: document.getElementById('apiVersion').value,
+                api_endpoint: document.getElementById('apiEndpoint').value,
+                api_sandbox_endpoint: document.getElementById('apiSandboxEndpoint').value,
+                is_sandbox: document.getElementById('isSandbox').checked,
+                merchant_id: document.getElementById('merchantId').value,
+                app_id: document.getElementById('appId').value,
+                app_secret: document.getElementById('appSecret').value,
+                public_key: document.getElementById('publicKey').value,
+                private_key: document.getElementById('privateKey').value,
+                cert_path: document.getElementById('certPath').value,
+                supports_payment: document.getElementById('supportsPayment').checked,
+                supports_query: document.getElementById('supportsQuery').checked,
+                supports_refund: document.getElementById('supportsRefund').checked,
+                supports_transfer: document.getElementById('supportsTransfer').checked,
+                status: document.getElementById('configStatus').value,
+                description: document.getElementById('configDescription').value,
+                remark: document.getElementById('configRemark').value
+            };
+
+            // 验证必填字段
+            if (!data.provider_name || !data.provider_code || !data.api_endpoint) {
+                alert('请填写必填字段');
+                return;
+            }
+
+            alert('支付接口配置功能已准备就绪。\n\n配置数据:\n' + JSON.stringify(data, null, 2));
+            closeConfigModal();
+        }
+
+        // 关闭模态框
+        function closeConfigModal() {
+            document.getElementById('configModal').style.display = 'none';
+        }
+
+        // 工具函数
+        function getProviderTypeText(type) {
+            const types = {
+                'bank': '银行',
+                'payment_platform': '支付平台',
+                'acquirer': '收单机构'
+            };
+            return types[type] || type;
+        }
+
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

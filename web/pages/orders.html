@@ -274,6 +274,11 @@
                 return;
             }
 
+            const paymentTypeMap = {
+                public: '对公',
+                private: '对私'
+            };
+
             const html = `
                 <table class="table">
                     <thead>
@@ -282,6 +287,8 @@
                             <th>订单类型</th>
                             <th>客户名称</th>
                             <th>金额</th>
+                            <th>支付方式</th>
+                            <th>返点</th>
                             <th>状态</th>
                             <th>创建时间</th>
                             <th>操作</th>
@@ -301,6 +308,16 @@
                                 </td>
                                 <td>${order.customer_name || '-'}</td>
                                 <td class="text-right">¥${formatMoney(order.amount)}</td>
+                                <td>
+                                    ${order.order_type === 'recharge' && order.payment_type
+                                        ? `<span class="badge badge-${order.payment_type === 'public' ? 'info' : 'warning'}">${paymentTypeMap[order.payment_type] || '-'}</span>`
+                                        : '-'}
+                                </td>
+                                <td>
+                                    ${order.order_type === 'recharge' && order.rebate_rate > 0
+                                        ? `<span class="text-success">${order.rebate_rate}%</span>`
+                                        : '-'}
+                                </td>
                                 <td>
                                     <span class="badge badge-${statusMap[order.status]?.type || 'default'}">
                                         ${statusMap[order.status]?.text || order.status}
@@ -549,6 +566,31 @@
                         <label>金额：</label>
                         <span class="text-large text-primary">¥${formatMoney(order.amount)}</span>
                     </div>
+                    ${order.order_type === 'recharge' ? `
+                        <div class="detail-section">
+                            <h4>返点信息</h4>
+                            <div class="detail-row">
+                                <label>支付方式：</label>
+                                <span>${order.payment_type === 'public' ? '对公' : (order.payment_type === 'private' ? '对私' : '-')}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>返点比例：</label>
+                                <span>${order.rebate_rate || 0}%</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>返点金额：</label>
+                                <span class="text-success">¥${formatMoney(order.rebate_amount || 0)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>现金到账：</label>
+                                <span>¥${formatMoney(order.cash_amount || 0)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>赠送金额：</label>
+                                <span class="text-warning">¥${formatMoney(order.gift_amount || 0)}</span>
+                            </div>
+                        </div>
+                    ` : ''}
                     <div class="detail-row">
                         <label>订单状态：</label>
                         <span>${statusMap[order.status] || order.status}</span>

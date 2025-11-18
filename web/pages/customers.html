@@ -120,6 +120,60 @@
         </div>
     </div>
 
+    <!-- 返点配置模态框 -->
+    <div id="rebateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">返点配置</h3>
+                <button class="modal-close" onclick="hideRebateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="rebateForm">
+                    <input type="hidden" id="rebateCustomerId">
+                    <div class="form-section">
+                        <h4>对公充值返点配置</h4>
+                        <div class="form-group">
+                            <label class="form-label">返点比例 (%)</label>
+                            <input type="number" class="form-control" id="publicRebateRate" min="0" max="100" step="0.01" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">现金比例 (%)</label>
+                            <input type="number" class="form-control" id="publicCashRate" min="0" max="100" step="0.01" value="100">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">赠送比例 (%)</label>
+                            <input type="number" class="form-control" id="publicGiftRate" min="0" max="100" step="0.01" value="0">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <h4>对私充值返点配置</h4>
+                        <div class="form-group">
+                            <label class="form-label">返点比例 (%)</label>
+                            <input type="number" class="form-control" id="privateRebateRate" min="0" max="100" step="0.01" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">现金比例 (%)</label>
+                            <input type="number" class="form-control" id="privateCashRate" min="0" max="100" step="0.01" value="100">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">赠送比例 (%)</label>
+                            <input type="number" class="form-control" id="privateGiftRate" min="0" max="100" step="0.01" value="0">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="alert alert-info">
+                            <strong>说明：</strong>现金比例 + 赠送比例 = 100%
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="hideRebateModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveRebateConfig()">保存</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/js/utils.js"></script>
     <script>
         let pagination;
@@ -209,6 +263,7 @@
                                 <td>${formatDate(customer.created_at, 'YYYY-MM-DD')}</td>
                                 <td>
                                     <button class="btn btn-sm btn-primary" onclick="editCustomer(${customer.id})">编辑</button>
+                                    <button class="btn btn-sm btn-success" onclick="showRebateModal(${customer.id})">返点</button>
                                     <button class="btn btn-sm btn-danger" onclick="deleteCustomer(${customer.id})">删除</button>
                                 </td>
                             </tr>
@@ -325,6 +380,72 @@
 
         function hideModal() {
             new Modal('customerModal').hide();
+        }
+
+        // 返点配置功能
+        async function showRebateModal(customerId) {
+            try {
+                const response = await apiGet(`/rebates/customer/${customerId}`);
+                if (response.code === 200) {
+                    const config = response.data;
+                    document.getElementById('rebateCustomerId').value = customerId;
+                    document.getElementById('publicRebateRate').value = config.public_rebate_rate || 0;
+                    document.getElementById('publicCashRate').value = config.public_cash_rate || 100;
+                    document.getElementById('publicGiftRate').value = config.public_gift_rate || 0;
+                    document.getElementById('privateRebateRate').value = config.private_rebate_rate || 0;
+                    document.getElementById('privateCashRate').value = config.private_cash_rate || 100;
+                    document.getElementById('privateGiftRate').value = config.private_gift_rate || 0;
+                    new Modal('rebateModal').show();
+                }
+            } catch (error) {
+                showToast('加载返点配置失败: ' + error.message, 'error');
+            }
+        }
+
+        async function saveRebateConfig() {
+            const customerId = document.getElementById('rebateCustomerId').value;
+
+            // 验证比例
+            const publicCash = parseFloat(document.getElementById('publicCashRate').value);
+            const publicGift = parseFloat(document.getElementById('publicGiftRate').value);
+            const privateCash = parseFloat(document.getElementById('privateCashRate').value);
+            const privateGift = parseFloat(document.getElementById('privateGiftRate').value);
+
+            if (Math.abs(publicCash + publicGift - 100) > 0.01) {
+                showToast('对公：现金比例 + 赠送比例必须等于100%', 'error');
+                return;
+            }
+            if (Math.abs(privateCash + privateGift - 100) > 0.01) {
+                showToast('对私：现金比例 + 赠送比例必须等于100%', 'error');
+                return;
+            }
+
+            try {
+                // 更新对公配置
+                await apiPut(`/rebates/customer/${customerId}`, {
+                    payment_type: 'public',
+                    rebate_rate: parseFloat(document.getElementById('publicRebateRate').value),
+                    cash_rate: publicCash,
+                    gift_rate: publicGift
+                });
+
+                // 更新对私配置
+                await apiPut(`/rebates/customer/${customerId}`, {
+                    payment_type: 'private',
+                    rebate_rate: parseFloat(document.getElementById('privateRebateRate').value),
+                    cash_rate: privateCash,
+                    gift_rate: privateGift
+                });
+
+                showToast('返点配置已更新', 'success');
+                hideRebateModal();
+            } catch (error) {
+                showToast('保存失败: ' + error.message, 'error');
+            }
+        }
+
+        function hideRebateModal() {
+            new Modal('rebateModal').hide();
         }
     </script>
 </body>
