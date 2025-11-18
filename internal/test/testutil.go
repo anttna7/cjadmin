@@ -59,6 +59,13 @@ func SetupTestDB(t *testing.T) *TestDB {
 		&models.SystemSetting{},
 		&models.AuditLog{},
 		&models.FileUpload{},
+		// 安全相关模型
+		&models.SMSCode{},
+		&models.OAuthBinding{},
+		&models.LoginBlacklist{},
+		&models.LoginWhitelist{},
+		&models.LoginAttempt{},
+		&models.OAuthConfig{},
 	)
 	if err != nil {
 		t.Fatalf("Failed to migrate test database: %v", err)
@@ -71,6 +78,10 @@ func SetupTestDB(t *testing.T) *TestDB {
 func (tdb *TestDB) TearDown(t *testing.T) {
 	// 清空所有表数据
 	tables := []string{
+		// 安全相关表
+		"oauth_configs", "login_attempts", "login_whitelist",
+		"login_blacklist", "oauth_bindings", "sms_codes",
+		// 其他表
 		"file_uploads", "audit_logs", "system_settings",
 		"custom_form_data", "custom_forms", "invoices",
 		"payments", "order_items", "orders",
