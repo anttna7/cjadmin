@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自定义报表 - CJAdmin</title>
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>自定义报表</h1>
+            <div class="page-actions">
+                <button class="btn btn-primary" onclick="showCreateModal()">+ 创建报表</button>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value" id="totalCount">0</div>
+                <div class="stat-label">总报表数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="todayExecutions">0</div>
+                <div class="stat-label">今日执行</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalExecutions">0</div>
+                <div class="stat-label">总执行次数</div>
+            </div>
+        </div>
+
+        <!-- 报表列表 -->
+        <div class="card">
+            <div class="card-body">
+                <div id="reportTableContainer">
+                    <div class="loading">加载中...</div>
+                </div>
+                <div id="paginationContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑报表模态框 -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">创建报表</h3>
+                <button class="modal-close" onclick="hideModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="reportForm">
+                    <input type="hidden" id="reportId">
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label class="form-label">报表名称 <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="name" required>
+                        </div>
+                        <div class="form-group col-6">
+                            <label class="form-label">类别</label>
+                            <select class="form-control" id="category">
+                                <option value="general">通用</option>
+                                <option value="finance">财务</option>
+                                <option value="customer">客户</option>
+                                <option value="order">订单</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">描述</label>
+                        <textarea class="form-control" id="description" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">数据源 <span class="required">*</span></label>
+                        <select class="form-control" id="baseTable" required onchange="loadTableFields()">
+                            <option value="">请选择数据源</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">选择字段 <span class="required">*</span></label>
+                        <div id="fieldSelector" class="field-selector">
+                            <small class="text-muted">请先选择数据源</small>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">筛选条件 (JSON)</label>
+                        <textarea class="form-control" id="filterConfig" rows="3" placeholder='[{"field": "status", "operator": "=", "value": "active"}]'></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label class="form-label">分组字段</label>
+                            <input type="text" class="form-control" id="groupByFields" placeholder='["customer_id"]'>
+                        </div>
+                        <div class="form-group col-6">
+                            <label class="form-label">排序配置</label>
+                            <input type="text" class="form-control" id="orderByConfig" placeholder='[{"field": "created_at", "direction": "DESC"}]'>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="hideModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveReport()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 执行报表模态框 -->
+    <div id="executeModal" class="modal">
+        <div class="modal-content modal-xl">
+            <div class="modal-header">
+                <h3 class="modal-title">执行报表</h3>
+                <button class="modal-close" onclick="hideExecuteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="executeParams" class="mb-3"></div>
+                <div id="executeResult">
+                    <div class="empty-state">点击"执行"按钮运行报表</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="hideExecuteModal()">关闭</button>
+                <button class="btn btn-success" onclick="exportResult()">导出</button>
+                <button class="btn btn-primary" onclick="runReport()">执行</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .field-selector { border: 1px solid #d9d9d9; border-radius: 4px; padding: 10px; max-height: 200px; overflow-y: auto; }
+        .field-item { display: inline-flex; align-items: center; padding: 4px 8px; margin: 2px; background: #f5f5f5; border-radius: 4px; cursor: pointer; }
+        .field-item.selected { background: #e6f7ff; border: 1px solid #1890ff; }
+        .field-item input { margin-right: 5px; }
+        .result-table { max-height: 400px; overflow: auto; }
+        .modal-xl .modal-content { max-width: 1000px; }
+    </style>
+
+    <script src="/static/js/utils.js"></script>
+    <script>
+        let pagination;
+        let dataSources = [];
+        let currentReportId = null;
+        let executeResults = [];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!isLoggedIn()) { window.location.href = '/login.html'; return; }
+
+            pagination = new Pagination(
+                document.getElementById('paginationContainer'),
+                { page: 1, pageSize: 10, total: 0, onChange: (page, pageSize) => loadReports(page, pageSize) }
+            );
+
+            loadDataSources();
+            loadStatistics();
+            loadReports();
+        });
+
+        async function loadDataSources() {
+            try {
+                const response = await apiGet('/reports/data-sources');
+                if (response.code === 200) {
+                    dataSources = response.data || [];
+                    const select = document.getElementById('baseTable');
+                    dataSources.forEach(ds => {
+                        const option = document.createElement('option');
+                        option.value = ds.table;
+                        option.textContent = ds.name;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('加载数据源失败:', error);
+            }
+        }
+
+        async function loadTableFields() {
+            const table = document.getElementById('baseTable').value;
+            if (!table) {
+                document.getElementById('fieldSelector').innerHTML = '<small class="text-muted">请先选择数据源</small>';
+                return;
+            }
+
+            try {
+                const response = await apiGet(`/reports/fields/${table}`);
+                if (response.code === 200) {
+                    const fields = response.data || [];
+                    const html = fields.map(f => `
+                        <label class="field-item">
+                            <input type="checkbox" name="fields" value="${f.field}" data-name="${f.name}">
+                            ${f.name} (${f.field})
+                        </label>
+                    `).join('');
+                    document.getElementById('fieldSelector').innerHTML = html;
+                }
+            } catch (error) {
+                showToast('加载字段失败', 'error');
+            }
+        }
+
+        async function loadStatistics() {
+            try {
+                const response = await apiGet('/reports/statistics');
+                if (response.code === 200) {
+                    const stats = response.data;
+                    document.getElementById('totalCount').textContent = stats.total_count || 0;
+                    document.getElementById('todayExecutions').textContent = stats.today_executions || 0;
+                    document.getElementById('totalExecutions').textContent = stats.total_executions || 0;
+                }
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+
+        async function loadReports(page = 1, pageSize = 10) {
+            try {
+                const response = await apiGet('/reports', { page, page_size: pageSize });
+                if (response.code === 200) {
+                    renderTable(response.data.list || []);
+                    pagination.setTotal(response.data.total || 0);
+                }
+            } catch (error) {
+                showToast('加载报表列表失败', 'error');
+            }
+        }
+
+        function renderTable(reports) {
+            const categoryMap = { general: '通用', finance: '财务', customer: '客户', order: '订单' };
+
+            if (reports.length === 0) {
+                document.getElementById('reportTableContainer').innerHTML = '<div class="empty-state">暂无报表，请创建新报表</div>';
+                return;
+            }
+
+            const html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>报表名称</th>
+                            <th>类别</th>
+                            <th>数据源</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${reports.map(report => `
+                            <tr>
+                                <td>
+                                    <strong>${report.name}</strong>
+                                    ${report.description ? `<br><small class="text-muted">${report.description}</small>` : ''}
+                                </td>
+                                <td>${categoryMap[report.category] || report.category}</td>
+                                <td>${report.base_table}</td>
+                                <td>${formatDate(report.created_at)}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success" onclick="showExecuteModal(${report.id})">执行</button>
+                                    <button class="btn btn-sm btn-primary" onclick="editReport(${report.id})">编辑</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteReport(${report.id})">删除</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('reportTableContainer').innerHTML = html;
+        }
+
+        function showCreateModal() {
+            document.getElementById('modalTitle').textContent = '创建报表';
+            document.getElementById('reportForm').reset();
+            document.getElementById('reportId').value = '';
+            document.getElementById('fieldSelector').innerHTML = '<small class="text-muted">请先选择数据源</small>';
+            new Modal('reportModal').show();
+        }
+
+        async function editReport(id) {
+            try {
+                const response = await apiGet(`/reports/${id}`);
+                if (response.code === 200) {
+                    const report = response.data;
+                    document.getElementById('modalTitle').textContent = '编辑报表';
+                    document.getElementById('reportId').value = report.id;
+                    document.getElementById('name').value = report.name;
+                    document.getElementById('category').value = report.category;
+                    document.getElementById('description').value = report.description || '';
+                    document.getElementById('baseTable').value = report.base_table;
+                    document.getElementById('filterConfig').value = report.filter_config ? JSON.stringify(report.filter_config) : '';
+                    document.getElementById('groupByFields').value = report.group_by_fields ? JSON.stringify(report.group_by_fields) : '';
+                    document.getElementById('orderByConfig').value = report.order_by_config ? JSON.stringify(report.order_by_config) : '';
+
+                    await loadTableFields();
+
+                    // 选中已配置的字段
+                    const selectFields = report.select_fields || [];
+                    selectFields.forEach(sf => {
+                        const checkbox = document.querySelector(`input[value="${sf.field}"]`);
+                        if (checkbox) checkbox.checked = true;
+                    });
+
+                    new Modal('reportModal').show();
+                }
+            } catch (error) {
+                showToast('加载报表失败', 'error');
+            }
+        }
+
+        async function saveReport() {
+            const id = document.getElementById('reportId').value;
+
+            // 获取选中的字段
+            const checkboxes = document.querySelectorAll('input[name="fields"]:checked');
+            const selectFields = Array.from(checkboxes).map(cb => ({
+                field: cb.value,
+                alias: cb.dataset.name
+            }));
+
+            if (selectFields.length === 0) {
+                showToast('请至少选择一个字段', 'error');
+                return;
+            }
+
+            const data = {
+                name: document.getElementById('name').value,
+                category: document.getElementById('category').value,
+                description: document.getElementById('description').value,
+                base_table: document.getElementById('baseTable').value,
+                select_fields: selectFields
+            };
+
+            // 解析JSON配置
+            try {
+                const filterConfig = document.getElementById('filterConfig').value;
+                if (filterConfig) data.filter_config = JSON.parse(filterConfig);
+
+                const groupBy = document.getElementById('groupByFields').value;
+                if (groupBy) data.group_by_fields = JSON.parse(groupBy);
+
+                const orderBy = document.getElementById('orderByConfig').value;
+                if (orderBy) data.order_by_config = JSON.parse(orderBy);
+            } catch (e) {
+                showToast('JSON格式错误', 'error');
+                return;
+            }
+
+            try {
+                const response = id ? await apiPut(`/reports/${id}`, data) : await apiPost('/reports', data);
+                if (response.code === 200) {
+                    showToast(id ? '报表已更新' : '报表已创建', 'success');
+                    hideModal();
+                    loadReports(pagination.page, pagination.pageSize);
+                    loadStatistics();
+                } else {
+                    showToast(response.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                showToast('保存失败', 'error');
+            }
+        }
+
+        async function deleteReport(id) {
+            if (!confirm('确定要删除这个报表吗？')) return;
+            try {
+                const response = await apiDelete(`/reports/${id}`);
+                if (response.code === 200) {
+                    showToast('报表已删除', 'success');
+                    loadReports(pagination.page, pagination.pageSize);
+                    loadStatistics();
+                }
+            } catch (error) {
+                showToast('删除失败', 'error');
+            }
+        }
+
+        function showExecuteModal(reportId) {
+            currentReportId = reportId;
+            document.getElementById('executeResult').innerHTML = '<div class="empty-state">点击"执行"按钮运行报表</div>';
+            executeResults = [];
+            new Modal('executeModal').show();
+        }
+
+        function hideExecuteModal() { new Modal('executeModal').hide(); }
+
+        async function runReport() {
+            if (!currentReportId) return;
+
+            document.getElementById('executeResult').innerHTML = '<div class="loading">执行中...</div>';
+
+            try {
+                const response = await apiPost(`/reports/${currentReportId}/execute`, {});
+                if (response.code === 200) {
+                    executeResults = response.data.results || [];
+                    const rowCount = response.data.row_count || 0;
+                    renderResults(executeResults, rowCount);
+                    loadStatistics();
+                } else {
+                    document.getElementById('executeResult').innerHTML = `<div class="alert alert-danger">${response.message || '执行失败'}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('executeResult').innerHTML = `<div class="alert alert-danger">执行失败: ${error.message}</div>`;
+            }
+        }
+
+        function renderResults(results, rowCount) {
+            if (results.length === 0) {
+                document.getElementById('executeResult').innerHTML = '<div class="empty-state">查询结果为空</div>';
+                return;
+            }
+
+            const columns = Object.keys(results[0]);
+            const html = `
+                <div class="mb-2"><strong>共 ${rowCount} 条记录</strong></div>
+                <div class="result-table">
+                    <table class="table">
+                        <thead>
+                            <tr>${columns.map(col => `<th>${col}</th>`).join('')}</tr>
+                        </thead>
+                        <tbody>
+                            ${results.map(row => `
+                                <tr>${columns.map(col => `<td>${row[col] != null ? row[col] : '-'}</td>`).join('')}</tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            document.getElementById('executeResult').innerHTML = html;
+        }
+
+        function exportResult() {
+            if (executeResults.length === 0) {
+                showToast('无数据可导出', 'warning');
+                return;
+            }
+
+            // 简单CSV导出
+            const columns = Object.keys(executeResults[0]);
+            let csv = columns.join(',') + '\n';
+            executeResults.forEach(row => {
+                csv += columns.map(col => `"${row[col] || ''}"`).join(',') + '\n';
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `report_${Date.now()}.csv`;
+            link.click();
+            showToast('导出成功', 'success');
+        }
+
+        function hideModal() { new Modal('reportModal').hide(); }
+    </script>
+</body>
+</html>

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主题管理 - CJAdmin</title>
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>主题管理</h1>
+            <div class="page-actions">
+                <button class="btn btn-success" onclick="showTemplateModal()">从模板创建</button>
+                <button class="btn btn-primary" onclick="showCreateModal()">+ 自定义主题</button>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value" id="totalCount">0</div>
+                <div class="stat-label">总主题数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="activeCount">0</div>
+                <div class="stat-label">已启用</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="festivalCount">0</div>
+                <div class="stat-label">节日主题</div>
+            </div>
+        </div>
+
+        <!-- 主题列表 -->
+        <div class="card">
+            <div class="card-body">
+                <div id="themeContainer">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑主题模态框 -->
+    <div id="themeModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">创建主题</h3>
+                <button class="modal-close" onclick="hideModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="themeForm">
+                    <input type="hidden" id="themeId">
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label class="form-label">主题名称 <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="name" required>
+                        </div>
+                        <div class="form-group col-6">
+                            <label class="form-label">主题类型</label>
+                            <select class="form-control" id="themeType">
+                                <option value="custom">自定义</option>
+                                <option value="festival">节日主题</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">描述</label>
+                        <textarea class="form-control" id="description" rows="2"></textarea>
+                    </div>
+                    <div class="form-section">
+                        <h4>颜色配置</h4>
+                        <div class="form-row">
+                            <div class="form-group col-3">
+                                <label class="form-label">主色调</label>
+                                <input type="color" class="form-control" id="primaryColor" value="#1890ff">
+                            </div>
+                            <div class="form-group col-3">
+                                <label class="form-label">次要色</label>
+                                <input type="color" class="form-control" id="secondaryColor" value="#52c41a">
+                            </div>
+                            <div class="form-group col-3">
+                                <label class="form-label">背景色</label>
+                                <input type="color" class="form-control" id="backgroundColor" value="#f0f2f5">
+                            </div>
+                            <div class="form-group col-3">
+                                <label class="form-label">文字色</label>
+                                <input type="color" class="form-control" id="textColor" value="#333333">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <h4>图片资源</h4>
+                        <div class="form-row">
+                            <div class="form-group col-6">
+                                <label class="form-label">Logo URL</label>
+                                <input type="text" class="form-control" id="logoUrl" placeholder="https://...">
+                            </div>
+                            <div class="form-group col-6">
+                                <label class="form-label">登录背景URL</label>
+                                <input type="text" class="form-control" id="loginBackgroundUrl" placeholder="https://...">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">自定义CSS</label>
+                        <textarea class="form-control" id="customCss" rows="4" placeholder=".header { ... }"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label class="form-label">设为默认</label>
+                            <select class="form-control" id="isDefault">
+                                <option value="false">否</option>
+                                <option value="true">是</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-6">
+                            <label class="form-label">状态</label>
+                            <select class="form-control" id="isActive">
+                                <option value="true">启用</option>
+                                <option value="false">禁用</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="hideModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveTheme()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模板选择模态框 -->
+    <div id="templateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">选择节日主题模板</h3>
+                <button class="modal-close" onclick="hideTemplateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="template-list">
+                    <div class="template-item" onclick="createFromTemplate('new_year')">
+                        <div class="template-preview" style="background: linear-gradient(135deg, #ff4d4f, #ffd700);"></div>
+                        <div class="template-name">元旦主题</div>
+                    </div>
+                    <div class="template-item" onclick="createFromTemplate('spring_festival')">
+                        <div class="template-preview" style="background: linear-gradient(135deg, #cf1322, #ffd700);"></div>
+                        <div class="template-name">春节主题</div>
+                    </div>
+                    <div class="template-item" onclick="createFromTemplate('mid_autumn')">
+                        <div class="template-preview" style="background: linear-gradient(135deg, #fa8c16, #ffd700);"></div>
+                        <div class="template-name">中秋主题</div>
+                    </div>
+                    <div class="template-item" onclick="createFromTemplate('christmas')">
+                        <div class="template-preview" style="background: linear-gradient(135deg, #389e0d, #cf1322);"></div>
+                        <div class="template-name">圣诞主题</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .theme-card { border: 1px solid #e8e8e8; border-radius: 8px; overflow: hidden; background: #fff; }
+        .theme-card.default { border-color: #1890ff; box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2); }
+        .theme-preview { height: 120px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; }
+        .theme-info { padding: 15px; }
+        .theme-name { font-size: 16px; font-weight: 600; margin-bottom: 5px; }
+        .theme-type { font-size: 12px; color: #999; margin-bottom: 10px; }
+        .theme-colors { display: flex; gap: 5px; margin-bottom: 10px; }
+        .color-dot { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #e8e8e8; }
+        .theme-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+        .template-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .template-item { cursor: pointer; border: 2px solid transparent; border-radius: 8px; padding: 10px; text-align: center; transition: all 0.3s; }
+        .template-item:hover { border-color: #1890ff; }
+        .template-preview { height: 60px; border-radius: 4px; margin-bottom: 8px; }
+        .template-name { font-size: 14px; font-weight: 500; }
+    </style>
+
+    <script src="/static/js/utils.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!isLoggedIn()) { window.location.href = '/login.html'; return; }
+            loadStatistics();
+            loadThemes();
+        });
+
+        async function loadStatistics() {
+            try {
+                const response = await apiGet('/themes/statistics');
+                if (response.code === 200) {
+                    const stats = response.data;
+                    document.getElementById('totalCount').textContent = stats.total_count || 0;
+                    document.getElementById('activeCount').textContent = stats.active_count || 0;
+                    document.getElementById('festivalCount').textContent = stats.festival_count || 0;
+                }
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+
+        async function loadThemes() {
+            try {
+                const response = await apiGet('/themes', { page: 1, page_size: 100 });
+                if (response.code === 200) {
+                    renderThemes(response.data.list || []);
+                }
+            } catch (error) {
+                showToast('加载主题失败', 'error');
+            }
+        }
+
+        function renderThemes(themes) {
+            if (themes.length === 0) {
+                document.getElementById('themeContainer').innerHTML = '<div class="empty-state">暂无主题，请创建新主题</div>';
+                return;
+            }
+
+            const typeMap = { default: '默认', festival: '节日', custom: '自定义' };
+            const html = `
+                <div class="theme-grid">
+                    ${themes.map(theme => `
+                        <div class="theme-card ${theme.is_default ? 'default' : ''}">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, ${theme.primary_color}, ${theme.secondary_color});">
+                                ${theme.is_default ? '当前使用' : ''}
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">${theme.name}</div>
+                                <div class="theme-type">${typeMap[theme.theme_type] || '自定义'} ${!theme.is_active ? '(已禁用)' : ''}</div>
+                                <div class="theme-colors">
+                                    <div class="color-dot" style="background: ${theme.primary_color};" title="主色调"></div>
+                                    <div class="color-dot" style="background: ${theme.secondary_color};" title="次要色"></div>
+                                    <div class="color-dot" style="background: ${theme.background_color};" title="背景色"></div>
+                                    <div class="color-dot" style="background: ${theme.text_color};" title="文字色"></div>
+                                </div>
+                                <div class="theme-actions">
+                                    <button class="btn btn-sm btn-primary" onclick="editTheme(${theme.id})">编辑</button>
+                                    ${!theme.is_default ? `<button class="btn btn-sm btn-success" onclick="setDefault(${theme.id})">设为默认</button>` : ''}
+                                    <button class="btn btn-sm btn-${theme.is_active ? 'warning' : 'success'}" onclick="toggleStatus(${theme.id})">${theme.is_active ? '禁用' : '启用'}</button>
+                                    ${!theme.is_default ? `<button class="btn btn-sm btn-danger" onclick="deleteTheme(${theme.id})">删除</button>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            document.getElementById('themeContainer').innerHTML = html;
+        }
+
+        function showCreateModal() {
+            document.getElementById('modalTitle').textContent = '创建主题';
+            document.getElementById('themeForm').reset();
+            document.getElementById('themeId').value = '';
+            document.getElementById('primaryColor').value = '#1890ff';
+            document.getElementById('secondaryColor').value = '#52c41a';
+            document.getElementById('backgroundColor').value = '#f0f2f5';
+            document.getElementById('textColor').value = '#333333';
+            new Modal('themeModal').show();
+        }
+
+        function showTemplateModal() { new Modal('templateModal').show(); }
+        function hideTemplateModal() { new Modal('templateModal').hide(); }
+
+        async function createFromTemplate(festivalType) {
+            try {
+                const response = await apiPost('/themes/from-template', { festival_type: festivalType });
+                if (response.code === 200) {
+                    showToast('主题已创建', 'success');
+                    hideTemplateModal();
+                    loadThemes();
+                    loadStatistics();
+                } else {
+                    showToast(response.message || '创建失败', 'error');
+                }
+            } catch (error) {
+                showToast('创建失败', 'error');
+            }
+        }
+
+        async function editTheme(id) {
+            try {
+                const response = await apiGet(`/themes/${id}`);
+                if (response.code === 200) {
+                    const theme = response.data;
+                    document.getElementById('modalTitle').textContent = '编辑主题';
+                    document.getElementById('themeId').value = theme.id;
+                    document.getElementById('name').value = theme.name;
+                    document.getElementById('themeType').value = theme.theme_type;
+                    document.getElementById('description').value = theme.description || '';
+                    document.getElementById('primaryColor').value = theme.primary_color;
+                    document.getElementById('secondaryColor').value = theme.secondary_color;
+                    document.getElementById('backgroundColor').value = theme.background_color;
+                    document.getElementById('textColor').value = theme.text_color;
+                    document.getElementById('logoUrl').value = theme.logo_url || '';
+                    document.getElementById('loginBackgroundUrl').value = theme.login_background_url || '';
+                    document.getElementById('customCss').value = theme.custom_css || '';
+                    document.getElementById('isDefault').value = theme.is_default ? 'true' : 'false';
+                    document.getElementById('isActive').value = theme.is_active ? 'true' : 'false';
+                    new Modal('themeModal').show();
+                }
+            } catch (error) {
+                showToast('加载主题失败', 'error');
+            }
+        }
+
+        async function saveTheme() {
+            const id = document.getElementById('themeId').value;
+            const data = {
+                name: document.getElementById('name').value,
+                theme_type: document.getElementById('themeType').value,
+                description: document.getElementById('description').value,
+                primary_color: document.getElementById('primaryColor').value,
+                secondary_color: document.getElementById('secondaryColor').value,
+                background_color: document.getElementById('backgroundColor').value,
+                text_color: document.getElementById('textColor').value,
+                logo_url: document.getElementById('logoUrl').value,
+                login_background_url: document.getElementById('loginBackgroundUrl').value,
+                custom_css: document.getElementById('customCss').value,
+                is_default: document.getElementById('isDefault').value === 'true',
+                is_active: document.getElementById('isActive').value === 'true'
+            };
+
+            try {
+                const response = id ? await apiPut(`/themes/${id}`, data) : await apiPost('/themes', data);
+                if (response.code === 200) {
+                    showToast(id ? '主题已更新' : '主题已创建', 'success');
+                    hideModal();
+                    loadThemes();
+                    loadStatistics();
+                } else {
+                    showToast(response.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                showToast('保存失败', 'error');
+            }
+        }
+
+        async function setDefault(id) {
+            try {
+                const response = await apiPut(`/themes/${id}/default`);
+                if (response.code === 200) {
+                    showToast('已设为默认主题', 'success');
+                    loadThemes();
+                }
+            } catch (error) {
+                showToast('操作失败', 'error');
+            }
+        }
+
+        async function toggleStatus(id) {
+            try {
+                const response = await apiPut(`/themes/${id}/toggle`);
+                if (response.code === 200) {
+                    showToast('状态已更新', 'success');
+                    loadThemes();
+                    loadStatistics();
+                }
+            } catch (error) {
+                showToast('操作失败', 'error');
+            }
+        }
+
+        async function deleteTheme(id) {
+            if (!confirm('确定要删除这个主题吗？')) return;
+            try {
+                const response = await apiDelete(`/themes/${id}`);
+                if (response.code === 200) {
+                    showToast('主题已删除', 'success');
+                    loadThemes();
+                    loadStatistics();
+                }
+            } catch (error) {
+                showToast('删除失败', 'error');
+            }
+        }
+
+        function hideModal() { new Modal('themeModal').hide(); }
+    </script>
+</body>
+</html>

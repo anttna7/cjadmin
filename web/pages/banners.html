@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>横幅广告管理 - CJAdmin</title>
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>横幅广告管理</h1>
+            <div class="page-actions">
+                <button class="btn btn-primary" onclick="showCreateModal()">+ 创建横幅</button>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value" id="totalCount">0</div>
+                <div class="stat-label">总横幅数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="activeCount">0</div>
+                <div class="stat-label">已启用</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalViews">0</div>
+                <div class="stat-label">总浏览</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="clickRate">0%</div>
+                <div class="stat-label">点击率</div>
+            </div>
+        </div>
+
+        <!-- 搜索过滤 -->
+        <div class="card">
+            <div class="card-body">
+                <form class="search-form" onsubmit="handleSearch(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>横幅标题</label>
+                            <input type="text" id="filterTitle" class="form-control" placeholder="搜索标题">
+                        </div>
+                        <div class="form-group">
+                            <label>展示位置</label>
+                            <select id="filterPosition" class="form-control">
+                                <option value="">全部</option>
+                                <option value="top">顶部</option>
+                                <option value="bottom">底部</option>
+                                <option value="sidebar">侧边栏</option>
+                                <option value="popup">弹窗</option>
+                                <option value="login">登录页</option>
+                                <option value="recharge">充值页</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>状态</label>
+                            <select id="filterStatus" class="form-control">
+                                <option value="">全部</option>
+                                <option value="true">启用</option>
+                                <option value="false">禁用</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">搜索</button>
+                        <button type="button" class="btn btn-default" onclick="resetFilters()">重置</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 横幅列表 -->
+        <div class="card">
+            <div class="card-body">
+                <div id="bannerTableContainer">
+                    <div class="loading">加载中...</div>
+                </div>
+                <div id="paginationContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑横幅模态框 -->
+    <div id="bannerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">创建横幅</h3>
+                <button class="modal-close" onclick="hideModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="bannerForm">
+                    <input type="hidden" id="bannerId">
+                    <div class="form-group">
+                        <label class="form-label">横幅标题 <span class="required">*</span></label>
+                        <input type="text" class="form-control" id="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">描述</label>
+                        <textarea class="form-control" id="description" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">图片URL <span class="required">*</span></label>
+                        <input type="text" class="form-control" id="imageUrl" required placeholder="https://...">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label class="form-label">链接URL</label>
+                            <input type="text" class="form-control" id="linkUrl" placeholder="https://...">
+                        </div>
+                        <div class="form-group col-6">
+                            <label class="form-label">展示位置</label>
+                            <select class="form-control" id="position">
+                                <option value="top">顶部</option>
+                                <option value="bottom">底部</option>
+                                <option value="sidebar">侧边栏</option>
+                                <option value="popup">弹窗</option>
+                                <option value="login">登录页</option>
+                                <option value="recharge">充值页</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label class="form-label">开始时间</label>
+                            <input type="datetime-local" class="form-control" id="startTime">
+                        </div>
+                        <div class="form-group col-6">
+                            <label class="form-label">结束时间</label>
+                            <input type="datetime-local" class="form-control" id="endTime">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label class="form-label">排序</label>
+                            <input type="number" class="form-control" id="sortOrder" value="0">
+                        </div>
+                        <div class="form-group col-6">
+                            <label class="form-label">状态</label>
+                            <select class="form-control" id="isActive">
+                                <option value="true">启用</option>
+                                <option value="false">禁用</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="hideModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveBanner()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/utils.js"></script>
+    <script>
+        let pagination;
+        let currentFilters = {};
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!isLoggedIn()) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            pagination = new Pagination(
+                document.getElementById('paginationContainer'),
+                { page: 1, pageSize: 10, total: 0, onChange: (page, pageSize) => loadBanners(page, pageSize) }
+            );
+
+            loadStatistics();
+            loadBanners();
+        });
+
+        async function loadStatistics() {
+            try {
+                const response = await apiGet('/banners/statistics');
+                if (response.code === 200) {
+                    const stats = response.data;
+                    document.getElementById('totalCount').textContent = stats.total_count || 0;
+                    document.getElementById('activeCount').textContent = stats.active_count || 0;
+                    document.getElementById('totalViews').textContent = stats.total_views || 0;
+                    document.getElementById('clickRate').textContent = (stats.click_rate || 0).toFixed(1) + '%';
+                }
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+
+        async function loadBanners(page = 1, pageSize = 10) {
+            try {
+                const params = { page, page_size: pageSize, ...currentFilters };
+                const response = await apiGet('/banners', params);
+                if (response.code === 200) {
+                    renderTable(response.data.list || []);
+                    pagination.setTotal(response.data.total || 0);
+                }
+            } catch (error) {
+                showToast('加载横幅列表失败', 'error');
+            }
+        }
+
+        function renderTable(banners) {
+            const positionMap = { top: '顶部', bottom: '底部', sidebar: '侧边栏', popup: '弹窗', login: '登录页', recharge: '充值页' };
+
+            if (banners.length === 0) {
+                document.getElementById('bannerTableContainer').innerHTML = '<div class="empty-state">暂无横幅数据</div>';
+                return;
+            }
+
+            const html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>预览</th>
+                            <th>标题</th>
+                            <th>位置</th>
+                            <th>浏览/点击</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${banners.map(banner => `
+                            <tr>
+                                <td><img src="${banner.image_url}" alt="${banner.title}" style="max-width:80px;max-height:40px;"></td>
+                                <td><strong>${banner.title}</strong></td>
+                                <td>${positionMap[banner.position] || banner.position}</td>
+                                <td>${banner.view_count} / ${banner.click_count}</td>
+                                <td><span class="badge badge-${banner.is_active ? 'success' : 'default'}">${banner.is_active ? '启用' : '禁用'}</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick="editBanner(${banner.id})">编辑</button>
+                                    <button class="btn btn-sm btn-${banner.is_active ? 'warning' : 'success'}" onclick="toggleStatus(${banner.id})">${banner.is_active ? '禁用' : '启用'}</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteBanner(${banner.id})">删除</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('bannerTableContainer').innerHTML = html;
+        }
+
+        function handleSearch(event) {
+            event.preventDefault();
+            currentFilters = {
+                title: document.getElementById('filterTitle').value,
+                position: document.getElementById('filterPosition').value,
+                is_active: document.getElementById('filterStatus').value
+            };
+            Object.keys(currentFilters).forEach(key => { if (!currentFilters[key]) delete currentFilters[key]; });
+            loadBanners();
+        }
+
+        function resetFilters() {
+            document.getElementById('filterTitle').value = '';
+            document.getElementById('filterPosition').value = '';
+            document.getElementById('filterStatus').value = '';
+            currentFilters = {};
+            loadBanners();
+        }
+
+        function showCreateModal() {
+            document.getElementById('modalTitle').textContent = '创建横幅';
+            document.getElementById('bannerForm').reset();
+            document.getElementById('bannerId').value = '';
+            new Modal('bannerModal').show();
+        }
+
+        async function editBanner(id) {
+            try {
+                const response = await apiGet(`/banners/${id}`);
+                if (response.code === 200) {
+                    const banner = response.data;
+                    document.getElementById('modalTitle').textContent = '编辑横幅';
+                    document.getElementById('bannerId').value = banner.id;
+                    document.getElementById('title').value = banner.title;
+                    document.getElementById('description').value = banner.description || '';
+                    document.getElementById('imageUrl').value = banner.image_url;
+                    document.getElementById('linkUrl').value = banner.link_url || '';
+                    document.getElementById('position').value = banner.position;
+                    document.getElementById('startTime').value = banner.start_time ? formatDateTimeLocal(banner.start_time) : '';
+                    document.getElementById('endTime').value = banner.end_time ? formatDateTimeLocal(banner.end_time) : '';
+                    document.getElementById('sortOrder').value = banner.sort_order || 0;
+                    document.getElementById('isActive').value = banner.is_active ? 'true' : 'false';
+                    new Modal('bannerModal').show();
+                }
+            } catch (error) {
+                showToast('加载横幅失败', 'error');
+            }
+        }
+
+        async function saveBanner() {
+            const id = document.getElementById('bannerId').value;
+            const data = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                image_url: document.getElementById('imageUrl').value,
+                link_url: document.getElementById('linkUrl').value,
+                position: document.getElementById('position').value,
+                sort_order: parseInt(document.getElementById('sortOrder').value) || 0,
+                is_active: document.getElementById('isActive').value === 'true'
+            };
+
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            if (startTime) data.start_time = new Date(startTime).toISOString();
+            if (endTime) data.end_time = new Date(endTime).toISOString();
+
+            try {
+                const response = id ? await apiPut(`/banners/${id}`, data) : await apiPost('/banners', data);
+                if (response.code === 200) {
+                    showToast(id ? '横幅已更新' : '横幅已创建', 'success');
+                    hideModal();
+                    loadBanners(pagination.page, pagination.pageSize);
+                    loadStatistics();
+                } else {
+                    showToast(response.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                showToast('保存失败', 'error');
+            }
+        }
+
+        async function toggleStatus(id) {
+            try {
+                const response = await apiPut(`/banners/${id}/toggle`);
+                if (response.code === 200) {
+                    showToast('状态已更新', 'success');
+                    loadBanners(pagination.page, pagination.pageSize);
+                    loadStatistics();
+                }
+            } catch (error) {
+                showToast('操作失败', 'error');
+            }
+        }
+
+        async function deleteBanner(id) {
+            if (!confirm('确定要删除这个横幅吗？')) return;
+            try {
+                const response = await apiDelete(`/banners/${id}`);
+                if (response.code === 200) {
+                    showToast('横幅已删除', 'success');
+                    loadBanners(pagination.page, pagination.pageSize);
+                    loadStatistics();
+                }
+            } catch (error) {
+                showToast('删除失败', 'error');
+            }
+        }
+
+        function hideModal() { new Modal('bannerModal').hide(); }
+
+        function formatDateTimeLocal(isoString) {
+            if (!isoString) return '';
+            return new Date(isoString).toISOString().slice(0, 16);
+        }
+    </script>
+</body>
+</html>

@@ -91,6 +91,15 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 		orderHandler := handler.NewOrderHandler()
 		api.POST("/payment/callback", orderHandler.PaymentCallback)
 
+		// 公共API（不需要登录）
+		publicHandler := handler.NewPublicHandler(database.GetDB())
+		public := api.Group("/public")
+		{
+			public.GET("/theme", publicHandler.GetPublicTheme)
+			public.GET("/activities", publicHandler.GetPublicActivities)
+			public.GET("/banners", publicHandler.GetPublicBanners)
+		}
+
 		// 需要认证的路由
 		authorized := api.Group("")
 		authorized.Use(middleware.AuthMiddleware())
