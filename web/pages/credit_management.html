@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>授信管理 - CJAdmin</title>
+    <link rel="stylesheet" href="../static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>授信管理</h1>
+            <div class="page-actions">
+                <button class="btn btn-primary" onclick="showApplyCreditModal()">
+                    <span>+ 申请授信</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-label">授信客户</div>
+                <div class="stat-value" id="totalCustomers">0</div>
+                <div class="stat-change text-info">总客户数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">授信总额</div>
+                <div class="stat-value" id="totalLimit">¥0.00</div>
+                <div class="stat-change text-success">已授信额度</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">已用额度</div>
+                <div class="stat-value" id="totalBalance">¥0.00</div>
+                <div class="stat-change" id="usageRate">使用率 0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">待审批</div>
+                <div class="stat-value" id="pendingCount">0</div>
+                <div class="stat-change text-warning">等待处理</div>
+            </div>
+        </div>
+
+        <!-- Tab导航 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('pending')">待审批</button>
+            <button class="tab-btn" onclick="switchTab('all')">全部记录</button>
+            <button class="tab-btn" onclick="switchTab('customers')">客户授信</button>
+        </div>
+
+        <!-- 待审批Tab -->
+        <div id="pendingTab" class="tab-content active">
+            <div class="card">
+                <div class="card-body">
+                    <div id="pendingTableContainer">
+                        <div class="loading">加载中...</div>
+                    </div>
+                    <div id="pendingPaginationContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 全部记录Tab -->
+        <div id="allTab" class="tab-content">
+            <!-- 搜索过滤区 -->
+            <div class="card">
+                <div class="card-body">
+                    <form class="search-form" onsubmit="handleSearch(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>记录类型</label>
+                                <select id="filterRecordType" class="form-control">
+                                    <option value="">全部</option>
+                                    <option value="grant">授信</option>
+                                    <option value="adjust">调整</option>
+                                    <option value="repay">还款</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>审批状态</label>
+                                <select id="filterStatus" class="form-control">
+                                    <option value="">全部</option>
+                                    <option value="pending">待审批</option>
+                                    <option value="approved">已批准</option>
+                                    <option value="rejected">已拒绝</option>
+                                    <option value="cancelled">已取消</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>客户ID</label>
+                                <input type="number" id="filterCustomerId" class="form-control" placeholder="客户ID">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">搜索</button>
+                            <button type="button" class="btn btn-default" onclick="resetFilters()">重置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 记录列表 -->
+            <div class="card">
+                <div class="card-body">
+                    <div id="allTableContainer">
+                        <div class="loading">加载中...</div>
+                    </div>
+                    <div id="allPaginationContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 客户授信Tab -->
+        <div id="customersTab" class="tab-content">
+            <div class="card">
+                <div class="card-body">
+                    <form class="search-form" onsubmit="handleCustomerSearch(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>客户ID</label>
+                                <input type="number" id="searchCustomerId" class="form-control" placeholder="输入客户ID查询">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">查询</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="customerCreditInfo" class="card" style="display: none;">
+                <div class="card-body">
+                    <div id="customerCreditContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 申请授信模态框 -->
+    <div id="applyCreditModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>申请授信</h3>
+                <span class="close" onclick="closeApplyCreditModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="applyCreditForm">
+                    <div class="form-group">
+                        <label>客户ID <span class="required">*</span></label>
+                        <input type="number" id="applyCustomerId" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>授信金额 <span class="required">*</span></label>
+                        <input type="number" id="applyCreditAmount" class="form-control" required min="0.01" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>申请理由 <span class="required">*</span></label>
+                        <textarea id="applyReason" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>指定审批人</label>
+                        <select id="assignedApprover" class="form-control">
+                            <option value="">自动分配</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" onclick="closeApplyCreditModal()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitApplyCredit()">提交申请</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 审批模态框 -->
+    <div id="approveModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>审批授信</h3>
+                <span class="close" onclick="closeApproveModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="approveRecordInfo"></div>
+                <form id="approveForm">
+                    <input type="hidden" id="approveRecordId">
+                    <div class="form-group">
+                        <label>审批意见</label>
+                        <textarea id="approvalRemark" class="form-control" rows="3" placeholder="请输入审批意见"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" onclick="closeApproveModal()">取消</button>
+                <button type="button" class="btn btn-danger" onclick="submitApproval(false)">拒绝</button>
+                <button type="button" class="btn btn-success" onclick="submitApproval(true)">批准</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 调整额度模态框 -->
+    <div id="adjustCreditModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>调整授信额度</h3>
+                <span class="close" onclick="closeAdjustModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="adjustCreditForm">
+                    <div class="form-group">
+                        <label>客户ID <span class="required">*</span></label>
+                        <input type="number" id="adjustCustomerId" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>调整金额 <span class="required">*</span></label>
+                        <input type="number" id="adjustAmount" class="form-control" required step="0.01">
+                        <small class="form-text">正数为增加额度，负数为减少额度</small>
+                    </div>
+                    <div class="form-group">
+                        <label>调整原因 <span class="required">*</span></label>
+                        <textarea id="adjustReason" class="form-control" rows="3" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" onclick="closeAdjustModal()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitAdjustCredit()">确认调整</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 还款模态框 -->
+    <div id="repayModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>授信还款</h3>
+                <span class="close" onclick="closeRepayModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="repayForm">
+                    <div class="form-group">
+                        <label>客户ID <span class="required">*</span></label>
+                        <input type="number" id="repayCustomerId" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>还款金额 <span class="required">*</span></label>
+                        <input type="number" id="repayAmount" class="form-control" required min="0.01" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>还款方式 <span class="required">*</span></label>
+                        <select id="repayMethod" class="form-control" required>
+                            <option value="cash">现金</option>
+                            <option value="transfer">转账</option>
+                            <option value="deduction">扣款</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" onclick="closeRepayModal()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitRepay()">确认还款</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/js/utils.js"></script>
+    <script>
+        // 全局变量
+        let currentTab = 'pending';
+        let currentPage = {pending: 1, all: 1};
+        const pageSize = 10;
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStatistics();
+            loadApprovers();
+            loadPendingRecords();
+        });
+
+        // 加载统计数据
+        async function loadStatistics() {
+            try {
+                const response = await api.get('/credits/statistics');
+                const stats = response.data;
+
+                document.getElementById('totalCustomers').textContent = stats.total_customers || 0;
+                document.getElementById('totalLimit').textContent = '¥' + (stats.total_limit || 0).toFixed(2);
+                document.getElementById('totalBalance').textContent = '¥' + (stats.total_balance || 0).toFixed(2);
+                document.getElementById('usageRate').textContent = '使用率 ' + (stats.usage_rate || 0).toFixed(1) + '%';
+                document.getElementById('pendingCount').textContent = stats.pending_count || 0;
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+
+        // 加载审批人列表
+        async function loadApprovers() {
+            try {
+                const response = await api.get('/credits/approvers');
+                const select = document.getElementById('assignedApprover');
+                select.innerHTML = '<option value="">自动分配</option>';
+
+                if (response.data) {
+                    response.data.forEach(user => {
+                        select.innerHTML += `<option value="${user.id}">${user.username} (${user.email || ''})</option>`;
+                    });
+                }
+            } catch (error) {
+                console.error('加载审批人失败:', error);
+            }
+        }
+
+        // 切换Tab
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tab + 'Tab').classList.add('active');
+
+            if (tab === 'pending') {
+                loadPendingRecords();
+            } else if (tab === 'all') {
+                loadAllRecords();
+            }
+        }
+
+        // 加载待审批记录
+        async function loadPendingRecords() {
+            const container = document.getElementById('pendingTableContainer');
+            container.innerHTML = '<div class="loading">加载中...</div>';
+
+            try {
+                const response = await api.get(`/credits?status=pending&page=${currentPage.pending}&page_size=${pageSize}`);
+                renderRecordTable('pending', response.data, response.total);
+            } catch (error) {
+                container.innerHTML = '<div class="error">加载失败: ' + error.message + '</div>';
+            }
+        }
+
+        // 加载全部记录
+        async function loadAllRecords() {
+            const container = document.getElementById('allTableContainer');
+            container.innerHTML = '<div class="loading">加载中...</div>';
+
+            try {
+                const recordType = document.getElementById('filterRecordType').value;
+                const status = document.getElementById('filterStatus').value;
+                const customerId = document.getElementById('filterCustomerId').value;
+
+                let url = `/credits?page=${currentPage.all}&page_size=${pageSize}`;
+                if (recordType) url += `&record_type=${recordType}`;
+                if (status) url += `&status=${status}`;
+                if (customerId) url += `&customer_id=${customerId}`;
+
+                const response = await api.get(url);
+                renderRecordTable('all', response.data, response.total);
+            } catch (error) {
+                container.innerHTML = '<div class="error">加载失败: ' + error.message + '</div>';
+            }
+        }
+
+        // 渲染记录表格
+        function renderRecordTable(type, records, total) {
+            const container = document.getElementById(type + 'TableContainer');
+
+            if (!records || records.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无记录</div>';
+                return;
+            }
+
+            let html = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>客户</th>
+                            <th>类型</th>
+                            <th>金额</th>
+                            <th>授信前/后</th>
+                            <th>申请理由</th>
+                            <th>状态</th>
+                            <th>申请时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            records.forEach(record => {
+                const typeText = getRecordTypeText(record.record_type);
+                const statusText = getStatusText(record.approval_status);
+                const statusClass = getStatusClass(record.approval_status);
+
+                html += `
+                    <tr>
+                        <td>${record.id}</td>
+                        <td>
+                            ${record.customer ? record.customer.customer_name : '客户#' + record.customer_id}
+                        </td>
+                        <td><span class="badge badge-info">${typeText}</span></td>
+                        <td>¥${record.credit_amount.toFixed(2)}</td>
+                        <td>
+                            ¥${(record.before_limit || 0).toFixed(2)}<br>
+                            → ¥${(record.after_limit || 0).toFixed(2)}
+                        </td>
+                        <td><small>${record.apply_reason || '-'}</small></td>
+                        <td><span class="badge badge-${statusClass}">${statusText}</span></td>
+                        <td>${formatDateTime(record.apply_time)}</td>
+                        <td>
+                            <div class="action-buttons">
+                                ${record.approval_status === 'pending' ? `
+                                    <button class="btn btn-sm btn-success" onclick="showApproveModal(${record.id})" title="审批">
+                                        ✓
+                                    </button>
+                                ` : ''}
+                                <button class="btn btn-sm btn-info" onclick="viewRecord(${record.id})" title="详情">
+                                    👁
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+
+            // 渲染分页
+            renderPagination(type, total);
+        }
+
+        // 渲染分页
+        function renderPagination(type, total) {
+            const container = document.getElementById(type + 'PaginationContainer');
+            const totalPages = Math.ceil(total / pageSize);
+
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="pagination">';
+            if (currentPage[type] > 1) {
+                html += `<button class="btn btn-sm" onclick="goToPage('${type}', ${currentPage[type] - 1})">上一页</button>`;
+            }
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage[type]) {
+                    html += `<button class="btn btn-sm btn-primary">${i}</button>`;
+                } else {
+                    html += `<button class="btn btn-sm" onclick="goToPage('${type}', ${i})">${i}</button>`;
+                }
+            }
+            if (currentPage[type] < totalPages) {
+                html += `<button class="btn btn-sm" onclick="goToPage('${type}', ${currentPage[type] + 1})">下一页</button>`;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // 跳转页面
+        function goToPage(type, page) {
+            currentPage[type] = page;
+            if (type === 'pending') {
+                loadPendingRecords();
+            } else {
+                loadAllRecords();
+            }
+        }
+
+        // 搜索
+        function handleSearch(event) {
+            event.preventDefault();
+            currentPage.all = 1;
+            loadAllRecords();
+        }
+
+        // 重置筛选
+        function resetFilters() {
+            document.getElementById('filterRecordType').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterCustomerId').value = '';
+            currentPage.all = 1;
+            loadAllRecords();
+        }
+
+        // 查询客户授信信息
+        async function handleCustomerSearch(event) {
+            event.preventDefault();
+            const customerId = document.getElementById('searchCustomerId').value;
+            if (!customerId) {
+                alert('请输入客户ID');
+                return;
+            }
+
+            try {
+                const response = await api.get(`/credits/customer/${customerId}/info`);
+                const info = response.data;
+
+                const html = `
+                    <div class="customer-credit-info">
+                        <h4>客户授信信息 (ID: ${info.customer_id})</h4>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">授信额度:</span>
+                                <span class="value">¥${(info.credit_limit || 0).toFixed(2)}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">已用额度:</span>
+                                <span class="value">¥${(info.credit_balance || 0).toFixed(2)}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">可用额度:</span>
+                                <span class="value">¥${(info.available_credit || 0).toFixed(2)}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">使用率:</span>
+                                <span class="value">${(info.usage_rate || 0).toFixed(1)}%</span>
+                            </div>
+                        </div>
+                        <div class="action-buttons" style="margin-top: 15px;">
+                            <button class="btn btn-primary" onclick="showAdjustModal(${info.customer_id})">调整额度</button>
+                            <button class="btn btn-success" onclick="showRepayModal(${info.customer_id})">还款</button>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('customerCreditContent').innerHTML = html;
+                document.getElementById('customerCreditInfo').style.display = 'block';
+            } catch (error) {
+                alert('查询失败: ' + error.message);
+            }
+        }
+
+        // 显示申请授信模态框
+        function showApplyCreditModal() {
+            document.getElementById('applyCreditForm').reset();
+            document.getElementById('applyCreditModal').style.display = 'block';
+        }
+
+        // 提交授信申请
+        async function submitApplyCredit() {
+            const customerId = document.getElementById('applyCustomerId').value;
+            const amount = document.getElementById('applyCreditAmount').value;
+            const reason = document.getElementById('applyReason').value;
+            const approverId = document.getElementById('assignedApprover').value;
+
+            if (!customerId || !amount || !reason) {
+                alert('请填写完整信息');
+                return;
+            }
+
+            const data = {
+                customer_id: parseInt(customerId),
+                amount: parseFloat(amount),
+                reason: reason
+            };
+
+            if (approverId) {
+                data.assigned_approver_id = parseInt(approverId);
+            }
+
+            try {
+                await api.post('/credits/apply', data);
+                alert('申请提交成功');
+                closeApplyCreditModal();
+                loadStatistics();
+                loadPendingRecords();
+            } catch (error) {
+                alert('申请失败: ' + error.message);
+            }
+        }
+
+        // 显示审批模态框
+        async function showApproveModal(recordId) {
+            try {
+                const response = await api.get(`/credits/${recordId}`);
+                const record = response.data;
+
+                const html = `
+                    <div class="approve-info">
+                        <p><strong>客户:</strong> ${record.customer ? record.customer.customer_name : '客户#' + record.customer_id}</p>
+                        <p><strong>申请金额:</strong> ¥${record.credit_amount.toFixed(2)}</p>
+                        <p><strong>申请理由:</strong> ${record.apply_reason || '-'}</p>
+                        <p><strong>申请时间:</strong> ${formatDateTime(record.apply_time)}</p>
+                    </div>
+                `;
+
+                document.getElementById('approveRecordInfo').innerHTML = html;
+                document.getElementById('approveRecordId').value = recordId;
+                document.getElementById('approvalRemark').value = '';
+                document.getElementById('approveModal').style.display = 'block';
+            } catch (error) {
+                alert('加载记录失败: ' + error.message);
+            }
+        }
+
+        // 提交审批
+        async function submitApproval(approved) {
+            const recordId = document.getElementById('approveRecordId').value;
+            const remark = document.getElementById('approvalRemark').value;
+
+            const action = approved ? '批准' : '拒绝';
+            if (!confirm(`确定要${action}此授信申请吗？`)) return;
+
+            try {
+                await api.put(`/credits/${recordId}/approve`, {
+                    approved: approved,
+                    remark: remark
+                });
+                alert(`${action}成功`);
+                closeApproveModal();
+                loadStatistics();
+                loadPendingRecords();
+            } catch (error) {
+                alert(`${action}失败: ` + error.message);
+            }
+        }
+
+        // 显示调整额度模态框
+        function showAdjustModal(customerId) {
+            document.getElementById('adjustCreditForm').reset();
+            if (customerId) {
+                document.getElementById('adjustCustomerId').value = customerId;
+            }
+            document.getElementById('adjustCreditModal').style.display = 'block';
+        }
+
+        // 提交额度调整
+        async function submitAdjustCredit() {
+            const customerId = document.getElementById('adjustCustomerId').value;
+            const amount = document.getElementById('adjustAmount').value;
+            const reason = document.getElementById('adjustReason').value;
+
+            if (!customerId || !amount || !reason) {
+                alert('请填写完整信息');
+                return;
+            }
+
+            try {
+                await api.post('/credits/adjust', {
+                    customer_id: parseInt(customerId),
+                    adjust_amount: parseFloat(amount),
+                    reason: reason
+                });
+                alert('调整成功');
+                closeAdjustModal();
+                loadStatistics();
+            } catch (error) {
+                alert('调整失败: ' + error.message);
+            }
+        }
+
+        // 显示还款模态框
+        function showRepayModal(customerId) {
+            document.getElementById('repayForm').reset();
+            if (customerId) {
+                document.getElementById('repayCustomerId').value = customerId;
+            }
+            document.getElementById('repayModal').style.display = 'block';
+        }
+
+        // 提交还款
+        async function submitRepay() {
+            const customerId = document.getElementById('repayCustomerId').value;
+            const amount = document.getElementById('repayAmount').value;
+            const method = document.getElementById('repayMethod').value;
+
+            if (!customerId || !amount) {
+                alert('请填写完整信息');
+                return;
+            }
+
+            try {
+                await api.post('/credits/repay', {
+                    customer_id: parseInt(customerId),
+                    repay_amount: parseFloat(amount),
+                    repay_method: method
+                });
+                alert('还款成功');
+                closeRepayModal();
+                loadStatistics();
+            } catch (error) {
+                alert('还款失败: ' + error.message);
+            }
+        }
+
+        // 查看记录详情
+        async function viewRecord(recordId) {
+            try {
+                const response = await api.get(`/credits/${recordId}`);
+                const record = response.data;
+                alert(JSON.stringify(record, null, 2));
+            } catch (error) {
+                alert('加载详情失败: ' + error.message);
+            }
+        }
+
+        // 关闭模态框
+        function closeApplyCreditModal() {
+            document.getElementById('applyCreditModal').style.display = 'none';
+        }
+
+        function closeApproveModal() {
+            document.getElementById('approveModal').style.display = 'none';
+        }
+
+        function closeAdjustModal() {
+            document.getElementById('adjustCreditModal').style.display = 'none';
+        }
+
+        function closeRepayModal() {
+            document.getElementById('repayModal').style.display = 'none';
+        }
+
+        // 工具函数
+        function getRecordTypeText(type) {
+            const types = {
+                'grant': '授信',
+                'adjust': '调整',
+                'repay': '还款',
+                'consume': '消费'
+            };
+            return types[type] || type;
+        }
+
+        function getStatusText(status) {
+            const statuses = {
+                'pending': '待审批',
+                'approved': '已批准',
+                'rejected': '已拒绝',
+                'cancelled': '已取消'
+            };
+            return statuses[status] || status;
+        }
+
+        function getStatusClass(status) {
+            const classes = {
+                'pending': 'warning',
+                'approved': 'success',
+                'rejected': 'danger',
+                'cancelled': 'secondary'
+            };
+            return classes[status] || 'default';
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN');
+        }
+
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

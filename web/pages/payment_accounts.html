@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>收款账户管理 - CJAdmin</title>
+    <link rel="stylesheet" href="../static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>收款账户管理</h1>
+            <div class="page-actions">
+                <button class="btn btn-primary" onclick="showCreateAccountModal()">
+                    <span>+ 新增收款账户</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-label">总账户数</div>
+                <div class="stat-value" id="totalAccounts">0</div>
+                <div class="stat-change text-info">全部账户</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">启用账户</div>
+                <div class="stat-value" id="activeAccounts">0</div>
+                <div class="stat-change text-success">正常运行</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">今日收款</div>
+                <div class="stat-value" id="todayAmount">¥0.00</div>
+                <div class="stat-change" id="todayCount">0 笔</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">累计收款</div>
+                <div class="stat-value" id="totalAmount">¥0.00</div>
+                <div class="stat-change" id="totalCount">0 笔</div>
+            </div>
+        </div>
+
+        <!-- Tab导航 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('public')">对公账户</button>
+            <button class="tab-btn" onclick="switchTab('private')">对私账户</button>
+        </div>
+
+        <!-- 对公账户Tab -->
+        <div id="publicTab" class="tab-content active">
+            <!-- 搜索过滤区 -->
+            <div class="card">
+                <div class="card-body">
+                    <form class="search-form" onsubmit="handleSearch(event, 'public')">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>账户状态</label>
+                                <select id="filterPublicStatus" class="form-control">
+                                    <option value="">全部</option>
+                                    <option value="active">启用</option>
+                                    <option value="inactive">停用</option>
+                                    <option value="maintenance">维护中</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>支付方式</label>
+                                <select id="filterPublicMethod" class="form-control">
+                                    <option value="">全部</option>
+                                    <option value="bank_card">银行卡</option>
+                                    <option value="alipay">支付宝</option>
+                                    <option value="wechat">微信</option>
+                                    <option value="api">API接口</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>账户名称</label>
+                                <input type="text" id="filterPublicName" class="form-control" placeholder="搜索账户">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">搜索</button>
+                            <button type="button" class="btn btn-default" onclick="resetFilters('public')">重置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 对公账户列表 -->
+            <div class="card">
+                <div class="card-body">
+                    <div id="publicTableContainer">
+                        <div class="loading">加载中...</div>
+                    </div>
+                    <div id="publicPaginationContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对私账户Tab -->
+        <div id="privateTab" class="tab-content">
+            <!-- 搜索过滤区 -->
+            <div class="card">
+                <div class="card-body">
+                    <form class="search-form" onsubmit="handleSearch(event, 'private')">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>账户状态</label>
+                                <select id="filterPrivateStatus" class="form-control">
+                                    <option value="">全部</option>
+                                    <option value="active">启用</option>
+                                    <option value="inactive">停用</option>
+                                    <option value="maintenance">维护中</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>支付方式</label>
+                                <select id="filterPrivateMethod" class="form-control">
+                                    <option value="">全部</option>
+                                    <option value="bank_card">银行卡</option>
+                                    <option value="alipay">支付宝</option>
+                                    <option value="wechat">微信</option>
+                                    <option value="api">API接口</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>账户名称</label>
+                                <input type="text" id="filterPrivateName" class="form-control" placeholder="搜索账户">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">搜索</button>
+                            <button type="button" class="btn btn-default" onclick="resetFilters('private')">重置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 对私账户列表 -->
+            <div class="card">
+                <div class="card-body">
+                    <div id="privateTableContainer">
+                        <div class="loading">加载中...</div>
+                    </div>
+                    <div id="privatePaginationContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑账户模态框 -->
+    <div id="accountModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 id="accountModalTitle">新增收款账户</h3>
+                <span class="close" onclick="closeAccountModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="accountForm" onsubmit="handleAccountSubmit(event)">
+                    <input type="hidden" id="accountId">
+
+                    <div class="form-section">
+                        <h4>基本信息</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>账户名称 <span class="required">*</span></label>
+                                <input type="text" id="accountName" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label>账户类型 <span class="required">*</span></label>
+                                <select id="accountType" class="form-control" required>
+                                    <option value="public">对公账户</option>
+                                    <option value="private">对私账户</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>支付方式 <span class="required">*</span></label>
+                                <select id="paymentMethod" class="form-control" required onchange="togglePaymentFields()">
+                                    <option value="bank_card">银行卡</option>
+                                    <option value="alipay">支付宝</option>
+                                    <option value="wechat">微信</option>
+                                    <option value="api">API接口</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>账户状态</label>
+                                <select id="accountStatus" class="form-control">
+                                    <option value="active">启用</option>
+                                    <option value="inactive">停用</option>
+                                    <option value="maintenance">维护中</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 银行卡信息 -->
+                    <div id="bankCardFields" class="form-section">
+                        <h4>银行卡信息</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>账户号码</label>
+                                <input type="text" id="accountNumber" class="form-control" placeholder="银行卡号">
+                            </div>
+                            <div class="form-group">
+                                <label>账户持有人</label>
+                                <input type="text" id="accountHolder" class="form-control" placeholder="持卡人姓名">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>银行名称</label>
+                                <input type="text" id="bankName" class="form-control" placeholder="开户银行">
+                            </div>
+                            <div class="form-group">
+                                <label>支行名称</label>
+                                <input type="text" id="bankBranch" class="form-control" placeholder="支行信息">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- API接口信息 -->
+                    <div id="apiFields" class="form-section" style="display: none;">
+                        <h4>API接口配置</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>API类型</label>
+                                <select id="apiType" class="form-control">
+                                    <option value="">请选择</option>
+                                    <option value="BOC">中国银行</option>
+                                    <option value="ICBC">工商银行</option>
+                                    <option value="CCB">建设银行</option>
+                                    <option value="ABC">农业银行</option>
+                                    <option value="ALIPAY">支付宝</option>
+                                    <option value="WECHAT">微信支付</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>商户ID</label>
+                                <input type="text" id="apiMerchantId" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>AppID</label>
+                                <input type="text" id="apiAppId" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>API端点</label>
+                                <input type="text" id="apiEndpoint" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label>密钥</label>
+                                <textarea id="apiSecretKey" class="form-control" rows="2" placeholder="API密钥（加密存储）"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 轮询配置 -->
+                    <div class="form-section">
+                        <h4>轮询配置</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="isAutoRotate" checked> 参与自动轮询
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>轮询策略</label>
+                                <select id="rotateStrategy" class="form-control">
+                                    <option value="weight">权重策略</option>
+                                    <option value="round_robin">轮流策略</option>
+                                    <option value="balance">余额策略</option>
+                                    <option value="frequency">频率策略</option>
+                                    <option value="random">随机策略</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>权重 (1-100)</label>
+                                <input type="number" id="rotateWeight" class="form-control" value="1" min="1" max="100">
+                            </div>
+                            <div class="form-group">
+                                <label>优先级</label>
+                                <input type="number" id="rotatePriority" class="form-control" value="0" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 限额设置 -->
+                    <div class="form-section">
+                        <h4>限额设置</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>单笔限额</label>
+                                <input type="number" id="singleLimit" class="form-control" placeholder="不限制" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>单日限额</label>
+                                <input type="number" id="dailyLimit" class="form-control" placeholder="不限制" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>单月限额</label>
+                                <input type="number" id="monthlyLimit" class="form-control" placeholder="不限制" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 备注 -->
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label>备注</label>
+                            <textarea id="accountRemark" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" onclick="closeAccountModal()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitAccountForm()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 账户详情模态框 -->
+    <div id="accountDetailModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3>账户详情</h3>
+                <span class="close" onclick="closeDetailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="accountDetailContent">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/js/utils.js"></script>
+    <script>
+        // 全局变量
+        let currentTab = 'public';
+        let currentPage = {public: 1, private: 1};
+        const pageSize = 10;
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStatistics();
+            loadAccounts('public');
+        });
+
+        // 加载统计数据
+        async function loadStatistics() {
+            try {
+                // 加载对公统计
+                const publicStats = await api.get('/payment-accounts/statistics?account_type=public');
+                // 加载对私统计
+                const privateStats = await api.get('/payment-accounts/statistics?account_type=private');
+
+                const total = (publicStats.data.total_accounts || 0) + (privateStats.data.total_accounts || 0);
+                const active = (publicStats.data.active_accounts || 0) + (privateStats.data.active_accounts || 0);
+                const todayAmt = (publicStats.data.today_amount || 0) + (privateStats.data.today_amount || 0);
+                const todayCnt = (publicStats.data.today_count || 0) + (privateStats.data.today_count || 0);
+                const totalAmt = (publicStats.data.total_amount || 0) + (privateStats.data.total_amount || 0);
+                const totalCnt = (publicStats.data.total_count || 0) + (privateStats.data.total_count || 0);
+
+                document.getElementById('totalAccounts').textContent = total;
+                document.getElementById('activeAccounts').textContent = active;
+                document.getElementById('todayAmount').textContent = '¥' + todayAmt.toFixed(2);
+                document.getElementById('todayCount').textContent = todayCnt + ' 笔';
+                document.getElementById('totalAmount').textContent = '¥' + totalAmt.toFixed(2);
+                document.getElementById('totalCount').textContent = totalCnt + ' 笔';
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+
+        // 切换Tab
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tab + 'Tab').classList.add('active');
+
+            loadAccounts(tab);
+        }
+
+        // 加载账户列表
+        async function loadAccounts(type) {
+            const container = document.getElementById(type + 'TableContainer');
+            container.innerHTML = '<div class="loading">加载中...</div>';
+
+            try {
+                const status = document.getElementById('filter' + capitalize(type) + 'Status').value;
+                const method = document.getElementById('filter' + capitalize(type) + 'Method').value;
+
+                let url = `/payment-accounts?account_type=${type}&page=${currentPage[type]}&page_size=${pageSize}`;
+                if (status) url += `&status=${status}`;
+                if (method) url += `&payment_method=${method}`;
+
+                const response = await api.get(url);
+                renderAccountTable(type, response.data, response.total);
+            } catch (error) {
+                container.innerHTML = '<div class="error">加载失败: ' + error.message + '</div>';
+            }
+        }
+
+        // 渲染账户表格
+        function renderAccountTable(type, accounts, total) {
+            const container = document.getElementById(type + 'TableContainer');
+
+            if (!accounts || accounts.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无' + (type === 'public' ? '对公' : '对私') + '收款账户</div>';
+                return;
+            }
+
+            let html = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>账户名称</th>
+                            <th>支付方式</th>
+                            <th>账户信息</th>
+                            <th>轮询配置</th>
+                            <th>今日收款</th>
+                            <th>累计收款</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            accounts.forEach(account => {
+                const statusClass = account.status === 'active' ? 'success' :
+                                   account.status === 'inactive' ? 'danger' : 'warning';
+                const statusText = account.status === 'active' ? '启用' :
+                                  account.status === 'inactive' ? '停用' : '维护中';
+                const methodText = getPaymentMethodText(account.payment_method);
+                const strategyText = getStrategyText(account.rotate_strategy);
+
+                html += `
+                    <tr>
+                        <td>
+                            <strong>${account.account_name}</strong>
+                            ${account.is_auto_rotate ? '<span class="badge badge-info">轮询</span>' : ''}
+                        </td>
+                        <td>${methodText}</td>
+                        <td>
+                            ${account.payment_method === 'bank_card' ?
+                                `${account.bank_name || ''}<br><small>${maskAccountNumber(account.account_number)}</small>` :
+                                account.api_type || '-'}
+                        </td>
+                        <td>
+                            ${strategyText}<br>
+                            <small>权重: ${account.rotate_weight} | 优先级: ${account.rotate_priority}</small>
+                        </td>
+                        <td>
+                            ¥${(account.today_amount || 0).toFixed(2)}<br>
+                            <small>${account.today_count || 0} 笔</small>
+                        </td>
+                        <td>
+                            ¥${(account.total_amount || 0).toFixed(2)}<br>
+                            <small>${account.total_count || 0} 笔</small>
+                        </td>
+                        <td><span class="badge badge-${statusClass}">${statusText}</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn btn-sm btn-info" onclick="viewAccount(${account.id})" title="查看">
+                                    👁
+                                </button>
+                                <button class="btn btn-sm btn-primary" onclick="editAccount(${account.id})" title="编辑">
+                                    ✏️
+                                </button>
+                                <button class="btn btn-sm btn-${account.status === 'active' ? 'warning' : 'success'}"
+                                        onclick="toggleAccountStatus(${account.id}, '${account.status}')"
+                                        title="${account.status === 'active' ? '停用' : '启用'}">
+                                    ${account.status === 'active' ? '⏸' : '▶'}
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteAccount(${account.id})" title="删除">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+
+            // 渲染分页
+            renderPagination(type, total);
+        }
+
+        // 渲染分页
+        function renderPagination(type, total) {
+            const container = document.getElementById(type + 'PaginationContainer');
+            const totalPages = Math.ceil(total / pageSize);
+
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="pagination">';
+
+            // 上一页
+            if (currentPage[type] > 1) {
+                html += `<button class="btn btn-sm" onclick="goToPage('${type}', ${currentPage[type] - 1})">上一页</button>`;
+            }
+
+            // 页码
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage[type]) {
+                    html += `<button class="btn btn-sm btn-primary">${i}</button>`;
+                } else {
+                    html += `<button class="btn btn-sm" onclick="goToPage('${type}', ${i})">${i}</button>`;
+                }
+            }
+
+            // 下一页
+            if (currentPage[type] < totalPages) {
+                html += `<button class="btn btn-sm" onclick="goToPage('${type}', ${currentPage[type] + 1})">下一页</button>`;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // 跳转页面
+        function goToPage(type, page) {
+            currentPage[type] = page;
+            loadAccounts(type);
+        }
+
+        // 搜索
+        function handleSearch(event, type) {
+            event.preventDefault();
+            currentPage[type] = 1;
+            loadAccounts(type);
+        }
+
+        // 重置筛选
+        function resetFilters(type) {
+            document.getElementById('filter' + capitalize(type) + 'Status').value = '';
+            document.getElementById('filter' + capitalize(type) + 'Method').value = '';
+            document.getElementById('filter' + capitalize(type) + 'Name').value = '';
+            currentPage[type] = 1;
+            loadAccounts(type);
+        }
+
+        // 显示创建账户模态框
+        function showCreateAccountModal() {
+            document.getElementById('accountModalTitle').textContent = '新增收款账户';
+            document.getElementById('accountForm').reset();
+            document.getElementById('accountId').value = '';
+            document.getElementById('accountType').value = currentTab;
+            document.getElementById('isAutoRotate').checked = true;
+            togglePaymentFields();
+            document.getElementById('accountModal').style.display = 'block';
+        }
+
+        // 编辑账户
+        async function editAccount(id) {
+            try {
+                const response = await api.get(`/payment-accounts/${id}`);
+                const account = response.data;
+
+                document.getElementById('accountModalTitle').textContent = '编辑收款账户';
+                document.getElementById('accountId').value = account.id;
+                document.getElementById('accountName').value = account.account_name;
+                document.getElementById('accountType').value = account.account_type;
+                document.getElementById('paymentMethod').value = account.payment_method;
+                document.getElementById('accountStatus').value = account.status;
+                document.getElementById('accountNumber').value = account.account_number || '';
+                document.getElementById('accountHolder').value = account.account_holder || '';
+                document.getElementById('bankName').value = account.bank_name || '';
+                document.getElementById('bankBranch').value = account.bank_branch || '';
+                document.getElementById('apiType').value = account.api_type || '';
+                document.getElementById('apiMerchantId').value = account.api_merchant_id || '';
+                document.getElementById('apiAppId').value = account.api_app_id || '';
+                document.getElementById('apiEndpoint').value = account.api_endpoint || '';
+                document.getElementById('isAutoRotate').checked = account.is_auto_rotate;
+                document.getElementById('rotateStrategy').value = account.rotate_strategy;
+                document.getElementById('rotateWeight').value = account.rotate_weight;
+                document.getElementById('rotatePriority').value = account.rotate_priority;
+                document.getElementById('singleLimit').value = account.single_limit || '';
+                document.getElementById('dailyLimit').value = account.daily_limit || '';
+                document.getElementById('monthlyLimit').value = account.monthly_limit || '';
+                document.getElementById('accountRemark').value = account.remark || '';
+
+                togglePaymentFields();
+                document.getElementById('accountModal').style.display = 'block';
+            } catch (error) {
+                alert('加载账户信息失败: ' + error.message);
+            }
+        }
+
+        // 查看账户详情
+        async function viewAccount(id) {
+            try {
+                const response = await api.get(`/payment-accounts/${id}`);
+                const account = response.data;
+
+                const methodText = getPaymentMethodText(account.payment_method);
+                const strategyText = getStrategyText(account.rotate_strategy);
+                const statusText = account.status === 'active' ? '启用' :
+                                  account.status === 'inactive' ? '停用' : '维护中';
+
+                let html = `
+                    <div class="detail-grid">
+                        <div class="detail-section">
+                            <h4>基本信息</h4>
+                            <div class="detail-row">
+                                <span class="label">账户名称:</span>
+                                <span class="value">${account.account_name}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">账户类型:</span>
+                                <span class="value">${account.account_type === 'public' ? '对公账户' : '对私账户'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">支付方式:</span>
+                                <span class="value">${methodText}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">状态:</span>
+                                <span class="value">${statusText}</span>
+                            </div>
+                        </div>
+
+                        ${account.payment_method === 'bank_card' ? `
+                        <div class="detail-section">
+                            <h4>银行卡信息</h4>
+                            <div class="detail-row">
+                                <span class="label">账户号码:</span>
+                                <span class="value">${account.account_number || '-'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">持有人:</span>
+                                <span class="value">${account.account_holder || '-'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">银行:</span>
+                                <span class="value">${account.bank_name || '-'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">支行:</span>
+                                <span class="value">${account.bank_branch || '-'}</span>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <div class="detail-section">
+                            <h4>轮询配置</h4>
+                            <div class="detail-row">
+                                <span class="label">参与轮询:</span>
+                                <span class="value">${account.is_auto_rotate ? '是' : '否'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">轮询策略:</span>
+                                <span class="value">${strategyText}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">权重:</span>
+                                <span class="value">${account.rotate_weight}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">优先级:</span>
+                                <span class="value">${account.rotate_priority}</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <h4>收款统计</h4>
+                            <div class="detail-row">
+                                <span class="label">今日收款:</span>
+                                <span class="value">¥${(account.today_amount || 0).toFixed(2)} (${account.today_count || 0}笔)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">本月收款:</span>
+                                <span class="value">¥${(account.this_month_amount || 0).toFixed(2)} (${account.this_month_count || 0}笔)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">累计收款:</span>
+                                <span class="value">¥${(account.total_amount || 0).toFixed(2)} (${account.total_count || 0}笔)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">最后使用:</span>
+                                <span class="value">${account.last_used_at ? formatDateTime(account.last_used_at) : '从未使用'}</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <h4>限额设置</h4>
+                            <div class="detail-row">
+                                <span class="label">单笔限额:</span>
+                                <span class="value">${account.single_limit ? '¥' + account.single_limit.toFixed(2) : '不限制'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">单日限额:</span>
+                                <span class="value">${account.daily_limit ? '¥' + account.daily_limit.toFixed(2) : '不限制'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">单月限额:</span>
+                                <span class="value">${account.monthly_limit ? '¥' + account.monthly_limit.toFixed(2) : '不限制'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('accountDetailContent').innerHTML = html;
+                document.getElementById('accountDetailModal').style.display = 'block';
+            } catch (error) {
+                alert('加载账户详情失败: ' + error.message);
+            }
+        }
+
+        // 提交账户表单
+        async function submitAccountForm() {
+            const id = document.getElementById('accountId').value;
+            const data = {
+                account_name: document.getElementById('accountName').value,
+                account_type: document.getElementById('accountType').value,
+                payment_method: document.getElementById('paymentMethod').value,
+                account_number: document.getElementById('accountNumber').value,
+                account_holder: document.getElementById('accountHolder').value,
+                bank_name: document.getElementById('bankName').value,
+                bank_branch: document.getElementById('bankBranch').value,
+                api_type: document.getElementById('apiType').value,
+                api_merchant_id: document.getElementById('apiMerchantId').value,
+                api_app_id: document.getElementById('apiAppId').value,
+                api_endpoint: document.getElementById('apiEndpoint').value,
+                api_secret_key: document.getElementById('apiSecretKey').value,
+                is_auto_rotate: document.getElementById('isAutoRotate').checked,
+                rotate_strategy: document.getElementById('rotateStrategy').value,
+                rotate_weight: parseInt(document.getElementById('rotateWeight').value) || 1,
+                rotate_priority: parseInt(document.getElementById('rotatePriority').value) || 0,
+                single_limit: parseFloat(document.getElementById('singleLimit').value) || 0,
+                daily_limit: parseFloat(document.getElementById('dailyLimit').value) || 0,
+                monthly_limit: parseFloat(document.getElementById('monthlyLimit').value) || 0,
+                remark: document.getElementById('accountRemark').value
+            };
+
+            try {
+                if (id) {
+                    await api.put(`/payment-accounts/${id}`, data);
+                    alert('更新成功');
+                } else {
+                    await api.post('/payment-accounts', data);
+                    alert('创建成功');
+                }
+                closeAccountModal();
+                loadStatistics();
+                loadAccounts(data.account_type);
+            } catch (error) {
+                alert('保存失败: ' + error.message);
+            }
+        }
+
+        // 切换账户状态
+        async function toggleAccountStatus(id, currentStatus) {
+            const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+            const action = newStatus === 'active' ? '启用' : '停用';
+
+            if (!confirm(`确定要${action}此账户吗？`)) return;
+
+            try {
+                await api.put(`/payment-accounts/${id}/status`, {status: newStatus});
+                alert(`${action}成功`);
+                loadStatistics();
+                loadAccounts(currentTab);
+            } catch (error) {
+                alert(`${action}失败: ` + error.message);
+            }
+        }
+
+        // 删除账户
+        async function deleteAccount(id) {
+            if (!confirm('确定要删除此收款账户吗？此操作不可恢复。')) return;
+
+            try {
+                await api.delete(`/payment-accounts/${id}`);
+                alert('删除成功');
+                loadStatistics();
+                loadAccounts(currentTab);
+            } catch (error) {
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        // 关闭模态框
+        function closeAccountModal() {
+            document.getElementById('accountModal').style.display = 'none';
+        }
+
+        function closeDetailModal() {
+            document.getElementById('accountDetailModal').style.display = 'none';
+        }
+
+        // 切换支付方式字段显示
+        function togglePaymentFields() {
+            const method = document.getElementById('paymentMethod').value;
+            document.getElementById('bankCardFields').style.display =
+                (method === 'bank_card' || method === 'alipay' || method === 'wechat') ? 'block' : 'none';
+            document.getElementById('apiFields').style.display =
+                method === 'api' ? 'block' : 'none';
+        }
+
+        // 工具函数
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        function getPaymentMethodText(method) {
+            const methods = {
+                'bank_card': '银行卡',
+                'alipay': '支付宝',
+                'wechat': '微信',
+                'api': 'API接口'
+            };
+            return methods[method] || method;
+        }
+
+        function getStrategyText(strategy) {
+            const strategies = {
+                'weight': '权重策略',
+                'round_robin': '轮流策略',
+                'balance': '余额策略',
+                'frequency': '频率策略',
+                'random': '随机策略'
+            };
+            return strategies[strategy] || strategy;
+        }
+
+        function maskAccountNumber(number) {
+            if (!number) return '-';
+            if (number.length <= 8) return number;
+            return number.slice(0, 4) + '****' + number.slice(-4);
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN');
+        }
+
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
