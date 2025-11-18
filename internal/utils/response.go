@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -74,7 +76,68 @@ const (
 	CodeUnauthorized    = 401
 	CodeForbidden       = 403
 	CodeNotFound        = 404
+	CodeTooManyRequests = 429
 	CodeInternalError   = 500
 	CodeDatabaseError   = 501
 	CodeValidationError = 502
 )
+
+// BadRequest 400错误响应
+func BadRequest(c *gin.Context, message string) {
+	c.JSON(http.StatusBadRequest, Response{
+		Code:    CodeInvalidParams,
+		Message: message,
+	})
+}
+
+// Unauthorized 401错误响应
+func Unauthorized(c *gin.Context, message string) {
+	c.JSON(http.StatusUnauthorized, Response{
+		Code:    CodeUnauthorized,
+		Message: message,
+	})
+}
+
+// Forbidden 403错误响应
+func Forbidden(c *gin.Context, message string) {
+	c.JSON(http.StatusForbidden, Response{
+		Code:    CodeForbidden,
+		Message: message,
+	})
+}
+
+// NotFound 404错误响应
+func NotFound(c *gin.Context, message string) {
+	c.JSON(http.StatusNotFound, Response{
+		Code:    CodeNotFound,
+		Message: message,
+	})
+}
+
+// TooManyRequests 429错误响应
+func TooManyRequests(c *gin.Context, message string) {
+	c.JSON(http.StatusTooManyRequests, Response{
+		Code:    CodeTooManyRequests,
+		Message: message,
+	})
+}
+
+// ServerError 500错误响应
+func ServerError(c *gin.Context, message string) {
+	c.JSON(http.StatusInternalServerError, Response{
+		Code:    CodeInternalError,
+		Message: message,
+	})
+}
+
+// SuccessWithPage 分页成功响应（别名）
+func SuccessWithPage(c *gin.Context, data interface{}, total int64, page, pageSize int) {
+	PageSuccess(c, data, total, page, pageSize)
+}
+
+// GenerateRandomString 生成随机字符串
+func GenerateRandomString(length int) string {
+	bytes := make([]byte, length/2+1)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)[:length]
+}

@@ -30,44 +30,12 @@
             padding: 40px;
             border-radius: 10px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            width: 400px;
+            width: 420px;
         }
         h2 {
             text-align: center;
             color: #333;
-            margin-bottom: 30px;
-        }
-        .form-group {
             margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: #666;
-            font-weight: 500;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-        }
-        .btn {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: opacity 0.2s;
         }
         .theme-banner {
             text-align: center;
@@ -82,9 +50,147 @@
         .theme-banner.active {
             display: block;
         }
+
+        /* 登录方式切换 */
+        .login-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        .login-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            color: #666;
+            font-size: 14px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .login-tab:hover {
+            color: var(--primary-color);
+        }
+        .login-tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        /* 表单样式 */
+        .login-form {
+            display: none;
+        }
+        .login-form.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        /* 验证码输入 */
+        .code-input-group {
+            display: flex;
+            gap: 10px;
+        }
+        .code-input-group input {
+            flex: 1;
+        }
+        .send-code-btn {
+            padding: 0 15px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .send-code-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* 按钮 */
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
         .btn:hover {
             opacity: 0.9;
         }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 第三方登录 */
+        .oauth-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e8e8e8;
+        }
+        .oauth-title {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-bottom: 15px;
+        }
+        .oauth-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .oauth-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 1px solid #e8e8e8;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.2s;
+        }
+        .oauth-btn:hover {
+            border-color: var(--primary-color);
+            transform: scale(1.1);
+        }
+        .oauth-btn.feishu {
+            color: #3370ff;
+        }
+        .oauth-btn.wechat {
+            color: #07c160;
+        }
+
+        /* 消息提示 */
         .error {
             color: #e74c3c;
             font-size: 14px;
@@ -103,60 +209,102 @@
     <div class="login-container">
         <div id="themeBanner" class="theme-banner"></div>
         <h2>系统登录</h2>
-        <form id="loginForm">
+
+        <!-- 登录方式切换 -->
+        <div class="login-tabs">
+            <div class="login-tab active" onclick="switchTab('password')">账号密码</div>
+            <div class="login-tab" onclick="switchTab('sms')">验证码登录</div>
+        </div>
+
+        <!-- 账号密码登录 -->
+        <form id="passwordForm" class="login-form active" onsubmit="loginByPassword(event)">
             <div class="form-group">
                 <label for="username">用户名</label>
-                <input type="text" id="username" name="username" required>
+                <input type="text" id="username" name="username" placeholder="请输入用户名" required>
             </div>
             <div class="form-group">
                 <label for="password">密码</label>
-                <input type="password" id="password" name="password" required>
+                <input type="password" id="password" name="password" placeholder="请输入密码" required>
             </div>
             <button type="submit" class="btn">登录</button>
-            <div id="message"></div>
+            <div id="passwordMessage"></div>
         </form>
+
+        <!-- 验证码登录 -->
+        <form id="smsForm" class="login-form" onsubmit="loginBySMS(event)">
+            <div class="form-group">
+                <label for="phone">手机号</label>
+                <input type="tel" id="phone" name="phone" placeholder="请输入手机号" pattern="[0-9]{11}" required>
+            </div>
+            <div class="form-group">
+                <label for="smsCode">验证码</label>
+                <div class="code-input-group">
+                    <input type="text" id="smsCode" name="smsCode" placeholder="请输入验证码" maxlength="6" required>
+                    <button type="button" class="send-code-btn" id="sendCodeBtn" onclick="sendCode()">
+                        获取验证码
+                    </button>
+                </div>
+            </div>
+            <button type="submit" class="btn">登录</button>
+            <div id="smsMessage"></div>
+        </form>
+
+        <!-- 第三方登录 -->
+        <div class="oauth-section">
+            <div class="oauth-title">其他登录方式</div>
+            <div class="oauth-buttons">
+                <button class="oauth-btn feishu" onclick="oauthLogin('feishu')" title="飞书登录">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </button>
+                <button class="oauth-btn wechat" onclick="oauthLogin('wechat')" title="微信登录">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M8.5 11.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm7 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM12 2C6.48 2 2 6.48 2 12c0 2.17.69 4.19 1.86 5.84L2.1 21.9l4.06-1.76C7.73 21.33 9.79 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
-        // 加载主题配置
-        async function loadTheme() {
-            try {
-                // 从URL参数或子域名获取租户标识
-                const urlParams = new URLSearchParams(window.location.search);
-                const tenantCode = urlParams.get('tenant') || '';
+        // 从URL获取租户标识
+        const urlParams = new URLSearchParams(window.location.search);
+        const tenantCode = urlParams.get('tenant') || '';
 
-                if (tenantCode) {
-                    const response = await fetch(`/api/public/theme?tenant=${tenantCode}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.code === 200 && data.data) {
-                            applyTheme(data.data);
-                        }
+        let countdown = 0;
+
+        // 页面加载
+        document.addEventListener('DOMContentLoaded', loadTheme);
+
+        // 加载主题
+        async function loadTheme() {
+            if (!tenantCode) return;
+            try {
+                const response = await fetch(`/api/public/theme?tenant=${tenantCode}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.code === 200 && data.data) {
+                        applyTheme(data.data);
                     }
                 }
             } catch (error) {
-                console.log('主题加载失败，使用默认主题');
+                console.log('主题加载失败');
             }
         }
 
-        // 应用主题样式
+        // 应用主题
         function applyTheme(theme) {
             const root = document.documentElement;
-
             if (theme.primary_color) {
                 root.style.setProperty('--primary-color', theme.primary_color);
             }
             if (theme.secondary_color) {
                 root.style.setProperty('--secondary-color', theme.secondary_color);
             }
-            if (theme.accent_color) {
-                root.style.setProperty('--accent-color', theme.accent_color);
-            }
             if (theme.background_image) {
                 document.body.style.backgroundImage = `url(${theme.background_image})`;
             }
-
-            // 显示主题横幅消息
             if (theme.welcome_message) {
                 const banner = document.getElementById('themeBanner');
                 banner.textContent = theme.welcome_message;
@@ -164,39 +312,43 @@
             }
         }
 
-        // 页面加载时获取主题
-        document.addEventListener('DOMContentLoaded', loadTheme);
+        // 切换登录方式
+        function switchTab(type) {
+            document.querySelectorAll('.login-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.login-form').forEach(form => form.classList.remove('active'));
 
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            if (type === 'password') {
+                document.querySelector('.login-tab:first-child').classList.add('active');
+                document.getElementById('passwordForm').classList.add('active');
+            } else {
+                document.querySelector('.login-tab:last-child').classList.add('active');
+                document.getElementById('smsForm').classList.add('active');
+            }
+        }
+
+        // 账号密码登录
+        async function loginByPassword(e) {
             e.preventDefault();
 
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const messageDiv = document.getElementById('message');
+            const messageDiv = document.getElementById('passwordMessage');
 
             try {
                 const response = await fetch('/api/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
                 });
 
                 const data = await response.json();
 
-                if (data.code === 0) {
+                if (data.code === 0 || data.code === 200) {
                     messageDiv.className = 'success';
                     messageDiv.textContent = '登录成功！';
-
-                    // 保存token
                     localStorage.setItem('token', data.data.token);
                     localStorage.setItem('user', JSON.stringify(data.data.user));
-
-                    // 跳转到后台
-                    setTimeout(() => {
-                        window.location.href = '/dashboard';
-                    }, 1000);
+                    setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
                 } else {
                     messageDiv.className = 'error';
                     messageDiv.textContent = data.message || '登录失败';
@@ -205,7 +357,105 @@
                 messageDiv.className = 'error';
                 messageDiv.textContent = '网络错误，请重试';
             }
-        });
+        }
+
+        // 发送验证码
+        async function sendCode() {
+            const phone = document.getElementById('phone').value;
+            if (!phone || phone.length !== 11) {
+                alert('请输入正确的手机号');
+                return;
+            }
+
+            const btn = document.getElementById('sendCodeBtn');
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/sms/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, code_type: 'login' })
+                });
+
+                const data = await response.json();
+
+                if (data.code === 200) {
+                    // 开始倒计时
+                    countdown = 60;
+                    updateCountdown();
+                } else {
+                    alert(data.message || '发送失败');
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                alert('网络错误');
+                btn.disabled = false;
+            }
+        }
+
+        // 更新倒计时
+        function updateCountdown() {
+            const btn = document.getElementById('sendCodeBtn');
+            if (countdown > 0) {
+                btn.textContent = `${countdown}秒后重发`;
+                countdown--;
+                setTimeout(updateCountdown, 1000);
+            } else {
+                btn.textContent = '获取验证码';
+                btn.disabled = false;
+            }
+        }
+
+        // 验证码登录
+        async function loginBySMS(e) {
+            e.preventDefault();
+
+            const phone = document.getElementById('phone').value;
+            const code = document.getElementById('smsCode').value;
+            const messageDiv = document.getElementById('smsMessage');
+
+            try {
+                const response = await fetch('/api/login/sms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, code })
+                });
+
+                const data = await response.json();
+
+                if (data.code === 200) {
+                    messageDiv.className = 'success';
+                    messageDiv.textContent = '登录成功！';
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+                    setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+                } else {
+                    messageDiv.className = 'error';
+                    messageDiv.textContent = data.message || '登录失败';
+                }
+            } catch (error) {
+                messageDiv.className = 'error';
+                messageDiv.textContent = '网络错误，请重试';
+            }
+        }
+
+        // 第三方登录
+        async function oauthLogin(provider) {
+            try {
+                // 获取授权URL
+                const response = await fetch(`/api/oauth/url?provider=${provider}&tenant_id=${tenantCode}`);
+                const data = await response.json();
+
+                if (data.code === 200 && data.data.auth_url) {
+                    // 跳转到授权页面
+                    window.location.href = data.data.auth_url;
+                } else {
+                    alert(data.message || '获取授权链接失败');
+                }
+            } catch (error) {
+                alert('网络错误');
+            }
+        }
     </script>
 </body>
 </html>

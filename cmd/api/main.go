@@ -103,6 +103,13 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 			public.POST("/submit-recharge", publicHandler.SubmitRecharge)
 		}
 
+		// 安全相关API（短信验证码、OAuth）
+		securityHandler := handler.NewSecurityHandler()
+		api.POST("/sms/send", securityHandler.SendSMSCode)
+		api.POST("/login/sms", securityHandler.LoginBySMS)
+		api.GET("/oauth/url", securityHandler.GetOAuthURL)
+		api.GET("/oauth/callback/:provider", securityHandler.OAuthCallback)
+
 		// 需要认证的路由
 		authorized := api.Group("")
 		authorized.Use(middleware.AuthMiddleware())
@@ -419,6 +426,25 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 				files.POST("/upload/image", uploadHandler.UploadImage)
 				files.POST("/upload/document", uploadHandler.UploadDocument)
 				files.GET("/statistics", middleware.RequirePermission("system.read"), uploadHandler.GetUploadStats)
+			}
+
+			// 安全管理（第21阶段）
+			security := authorized.Group("/security")
+			security.Use(middleware.TenantMiddleware())
+			{
+				// 黑名单管理
+				security.POST("/blacklist", middleware.RequirePermission("security.blacklist.manage"), securityHandler.AddBlacklist)
+				security.GET("/blacklist", middleware.RequirePermission("security.blacklist.view"), securityHandler.ListBlacklist)
+				security.DELETE("/blacklist/:id", middleware.RequirePermission("security.blacklist.manage"), securityHandler.DeleteBlacklist)
+
+				// 白名单管理
+				security.POST("/whitelist", middleware.RequirePermission("security.whitelist.manage"), securityHandler.AddWhitelist)
+				security.GET("/whitelist", middleware.RequirePermission("security.whitelist.view"), securityHandler.ListWhitelist)
+				security.DELETE("/whitelist/:id", middleware.RequirePermission("security.whitelist.manage"), securityHandler.DeleteWhitelist)
+
+				// OAuth绑定管理
+				security.GET("/oauth/bindings", middleware.RequirePermission("oauth.bindings.view"), securityHandler.ListOAuthBindings)
+				security.DELETE("/oauth/bindings/:provider", middleware.RequirePermission("oauth.bindings.manage"), securityHandler.UnbindOAuth)
 			}
 		}
 	}
